@@ -1,0 +1,447 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Caveat } from "next/font/google";
+import { supabaseBrowser } from "@/lib/supabase/browser";
+
+type AuthView = "signin" | "signup";
+
+const caveat = Caveat({ subsets: ["latin"], weight: ["400", "600"] });
+
+const JOIN_LEFT_TEXT =
+  "Hello and welcome to my Reading Club. Create your account and then step into this story world with me.";
+const LOGIN_LEFT_TEXT =
+  "This is my story world. A place where I share the stories I've written and the wonderful stories I've discovered on my own reading journey.";
+const SIGNIN_INTRO_TEXT = "Sign in with your email and password to open the bookcase.";
+const SIGNUP_INTRO_TEXT = "Create an account with a username, email, and password.";
+const RESET_INTRO_TEXT = "Set a new password for your account.";
+
+export default function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode");
+  const isResetMode = mode === "reset";
+  const authError = searchParams.get("authError");
+  const [authView, setAuthView] = useState<AuthView>(mode === "login" ? "signin" : "signup");
+  const effectiveAuthView: AuthView = mode === "login" ? "signin" : authView;
+
+  const leftText = isResetMode || effectiveAuthView === "signin" ? LOGIN_LEFT_TEXT : JOIN_LEFT_TEXT;
+  const rightIntroText = useMemo(() => {
+    if (isResetMode) return RESET_INTRO_TEXT;
+    return effectiveAuthView === "signin" ? SIGNIN_INTRO_TEXT : SIGNUP_INTRO_TEXT;
+  }, [effectiveAuthView, isResetMode]);
+
+  const [signUpUsername, setSignUpUsername] = useState("");
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [signUpPassword, setSignUpPassword] = useState("");
+  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState("");
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [showSignUpConfirmPassword, setShowSignUpConfirmPassword] = useState(false);
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirmPassword, setShowResetConfirmPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [typedText, setTypedText] = useState("");
+  const [typedAction, setTypedAction] = useState("");
+  const [actionReady, setActionReady] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (media.matches) {
+      const timer = window.setTimeout(() => {
+        setTypedText(leftText);
+        setTypedAction(rightIntroText);
+        setActionReady(true);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    let leftIndex = 0;
+    let rightIndex = 0;
+    let phase: "left" | "right" = "left";
+
+    const timer = setInterval(() => {
+      if (phase === "left") {
+        leftIndex += 1;
+        setTypedText(leftText.slice(0, leftIndex));
+        if (leftIndex >= leftText.length) {
+          phase = "right";
+        }
+        return;
+      }
+
+      rightIndex += 1;
+      setTypedAction(rightIntroText.slice(0, rightIndex));
+      if (rightIndex >= rightIntroText.length) {
+        setActionReady(true);
+        clearInterval(timer);
+      }
+    }, 18);
+
+    return () => clearInterval(timer);
+  }, [leftText, rightIntroText]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
+  function resetFeedback() {
+    setErr(null);
+    setNotice(null);
+  }
+
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+    const email = signInEmail.trim();
+    if (!email || !signInPassword) {
+      setErr("Please add your email and password.");
+      return;
+    }
+
+    const supabase = supabaseBrowser();
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password: signInPassword });
+    if (error) {
+      setErr(error.message);
+    } else {
+      router.push("/bookcase");
+    }
+    setBusy(false);
+  }
+
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+
+    const username = signUpUsername.trim();
+    const email = signUpEmail.trim();
+    if (!username || !email || !signUpPassword || !signUpConfirmPassword) {
+      setErr("Please complete username, email, password, and confirm password.");
+      return;
+    }
+    if (signUpPassword !== signUpConfirmPassword) {
+      setErr("Passwords do not match.");
+      return;
+    }
+    if (signUpPassword.length < 8) {
+      setErr("Password must be at least 8 characters.");
+      return;
+    }
+
+    const supabase = supabaseBrowser();
+    setBusy(true);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: signUpPassword,
+      options: {
+        data: {
+          username,
+          display_name: username,
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login?mode=login`,
+      },
+    });
+
+    if (error) {
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    if (data.session) {
+      router.push("/bookcase");
+      setBusy(false);
+      return;
+    }
+
+    setNotice("Account created. Check your email to confirm, then sign in.");
+    setAuthView("signin");
+    setSignInEmail(email);
+    setBusy(false);
+  }
+
+  async function handleForgotPassword() {
+    resetFeedback();
+    const email = (signInEmail || signUpEmail).trim();
+    if (!email) {
+      setErr("Add your email first, then click Forgot password.");
+      return;
+    }
+
+    const supabase = supabaseBrowser();
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login?mode=reset`,
+    });
+
+    if (error) {
+      setErr(error.message);
+    } else {
+      setNotice("Password reset email sent. Use the newest email link.");
+    }
+    setBusy(false);
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    resetFeedback();
+
+    if (!resetPassword || !resetConfirmPassword) {
+      setErr("Please enter and confirm your new password.");
+      return;
+    }
+    if (resetPassword !== resetConfirmPassword) {
+      setErr("Passwords do not match.");
+      return;
+    }
+    if (resetPassword.length < 8) {
+      setErr("Password must be at least 8 characters.");
+      return;
+    }
+
+    const supabase = supabaseBrowser();
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({ password: resetPassword });
+
+    if (error) {
+      setErr(error.message);
+      setBusy(false);
+      return;
+    }
+
+    setNotice("Password updated. Please sign in.");
+    setBusy(false);
+    window.setTimeout(() => router.replace("/login?mode=login"), 900);
+  }
+
+  return (
+    <main className="login-hero">
+      <section className="login-book">
+        <div className="login-page login-page-left">
+          <p className="login-kicker">Reading Club</p>
+          <p className={`typewriter ink-text ${caveat.className}`} aria-live="polite">
+            {typedText}
+          </p>
+        </div>
+
+        <div className="login-page login-page-right login-page-right-mode">
+          <p className="login-kicker">
+            {isResetMode ? "Reset password" : effectiveAuthView === "signin" ? "Welcome back" : "Join the story"}
+          </p>
+          {!actionReady ? (
+            <p className={`login-subtitle ink-text ${caveat.className}`}>
+              {typedAction}
+            </p>
+          ) : (
+            <>
+              <div className={`auth-panel ${caveat.className}`}>
+                <div className="auth-heading-row">
+                  {!isResetMode && (
+                    <div className="auth-switch" role="tablist" aria-label="Authentication mode">
+                      <button
+                        type="button"
+                        className={`auth-switch-btn ${effectiveAuthView === "signin" ? "active" : ""}`}
+                        onClick={() => {
+                          resetFeedback();
+                          setAuthView("signin");
+                        }}
+                        disabled={busy}
+                      >
+                        Sign in
+                      </button>
+                      <button
+                        type="button"
+                        className={`auth-switch-btn ${effectiveAuthView === "signup" ? "active" : ""}`}
+                        onClick={() => {
+                          resetFeedback();
+                          setAuthView("signup");
+                        }}
+                        disabled={busy}
+                      >
+                        Create account
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isResetMode ? (
+                  <form className="auth-form" onSubmit={handleResetPassword}>
+                    <label className="auth-field">
+                      <span>New password</span>
+                      <div className="auth-password-row">
+                        <input
+                          type={showResetPassword ? "text" : "password"}
+                          value={resetPassword}
+                          onChange={(event) => setResetPassword(event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="auth-toggle-password"
+                          onClick={() => setShowResetPassword((current) => !current)}
+                        >
+                          {showResetPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </label>
+
+                    <label className="auth-field">
+                      <span>Confirm new password</span>
+                      <div className="auth-password-row">
+                        <input
+                          type={showResetConfirmPassword ? "text" : "password"}
+                          value={resetConfirmPassword}
+                          onChange={(event) => setResetConfirmPassword(event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="auth-toggle-password"
+                          onClick={() => setShowResetConfirmPassword((current) => !current)}
+                        >
+                          {showResetConfirmPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </label>
+
+                    <button type="submit" className="auth-submit" disabled={busy}>
+                      {busy ? "Updating..." : "Update password"}
+                    </button>
+                  </form>
+                ) : effectiveAuthView === "signin" ? (
+                  <form className="auth-form" onSubmit={handleSignIn}>
+                    <label className="auth-field">
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        value={signInEmail}
+                        onChange={(event) => setSignInEmail(event.target.value)}
+                        autoComplete="email"
+                        required
+                      />
+                    </label>
+
+                    <label className="auth-field">
+                      <span>Password</span>
+                      <div className="auth-password-row">
+                        <input
+                          type={showSignInPassword ? "text" : "password"}
+                          value={signInPassword}
+                          onChange={(event) => setSignInPassword(event.target.value)}
+                          autoComplete="current-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="auth-toggle-password"
+                          onClick={() => setShowSignInPassword((current) => !current)}
+                        >
+                          {showSignInPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </label>
+
+                    <div className="auth-actions">
+                      <button type="submit" className="auth-submit" disabled={busy}>
+                        {busy ? "Signing in..." : "Sign in"}
+                      </button>
+                      <button type="button" className="auth-link" onClick={handleForgotPassword} disabled={busy}>
+                        Forgot password?
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form className="auth-form" onSubmit={handleSignUp}>
+                    <label className="auth-field">
+                      <span>Username</span>
+                      <input
+                        type="text"
+                        value={signUpUsername}
+                        onChange={(event) => setSignUpUsername(event.target.value)}
+                        autoComplete="username"
+                        required
+                      />
+                    </label>
+
+                    <label className="auth-field">
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        value={signUpEmail}
+                        onChange={(event) => setSignUpEmail(event.target.value)}
+                        autoComplete="email"
+                        required
+                      />
+                    </label>
+
+                    <label className="auth-field">
+                      <span>Password</span>
+                      <div className="auth-password-row">
+                        <input
+                          type={showSignUpPassword ? "text" : "password"}
+                          value={signUpPassword}
+                          onChange={(event) => setSignUpPassword(event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="auth-toggle-password"
+                          onClick={() => setShowSignUpPassword((current) => !current)}
+                        >
+                          {showSignUpPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </label>
+
+                    <label className="auth-field">
+                      <span>Confirm password</span>
+                      <div className="auth-password-row">
+                        <input
+                          type={showSignUpConfirmPassword ? "text" : "password"}
+                          value={signUpConfirmPassword}
+                          onChange={(event) => setSignUpConfirmPassword(event.target.value)}
+                          autoComplete="new-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="auth-toggle-password"
+                          onClick={() => setShowSignUpConfirmPassword((current) => !current)}
+                        >
+                          {showSignUpConfirmPassword ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                    </label>
+
+                    <button type="submit" className="auth-submit" disabled={busy}>
+                      {busy ? "Creating..." : "Create user"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </>
+          )}
+
+          {notice && <p className="login-note">{notice}</p>}
+          {(err || authError) && <p className="login-error">{err || authError}</p>}
+        </div>
+      </section>
+    </main>
+  );
+}
+
