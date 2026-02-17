@@ -3,7 +3,18 @@ import Stripe from "stripe";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseService } from "@/lib/supabase/service";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
+let stripeClient: Stripe | null = null;
+
+function getStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  }
+  return stripeClient;
+}
 
 function priceForEpisode(episodeNumber: number) {
   // Simple pricing rule: change however you like
@@ -12,6 +23,19 @@ function priceForEpisode(episodeNumber: number) {
 }
 
 export async function POST(req: Request) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!siteUrl) {
+    return NextResponse.json({ error: "Missing NEXT_PUBLIC_SITE_URL" }, { status: 500 });
+  }
+
+  let stripe: Stripe;
+  try {
+    stripe = getStripeClient();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Stripe configuration error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
   const form = await req.formData();
   const chapterId = String(form.get("chapter_id") || "");
 
@@ -57,8 +81,8 @@ export async function POST(req: Request) {
         },
       },
     ],
-    success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/episodes`,
-    cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/episodes`,
+    success_url: `${siteUrl}/episodes`,
+    cancel_url: `${siteUrl}/episodes`,
     metadata: {
       user_id: user.id,
       chapter_id: chapter.id,

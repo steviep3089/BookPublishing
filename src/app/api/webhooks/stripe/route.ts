@@ -3,9 +3,33 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase/service";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2026-01-28.clover" });
+let stripeClient: Stripe | null = null;
+
+function getStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(key, { apiVersion: "2026-01-28.clover" });
+  }
+  return stripeClient;
+}
 
 export async function POST(req: Request) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "Missing STRIPE_WEBHOOK_SECRET" }, { status: 500 });
+  }
+
+  let stripe: Stripe;
+  try {
+    stripe = getStripeClient();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Stripe configuration error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
   const body = await req.text();
   const headerStore = await headers();
   const sig = headerStore.get("stripe-signature");
@@ -14,7 +38,7 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown webhook error";
     return NextResponse.json({ error: `Webhook Error: ${message}` }, { status: 400 });
