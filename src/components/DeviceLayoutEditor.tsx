@@ -88,6 +88,7 @@ export default function DeviceLayoutEditor() {
   const [status, setStatus] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,6 +131,10 @@ export default function DeviceLayoutEditor() {
   const isPhoneProfile = profile === "iphone-portrait" || profile === "iphone-landscape";
   const stageSize = stageSizeForProfile(profile);
   const keys = useMemo(() => Object.keys(vars).sort((a, b) => a.localeCompare(b)), [vars]);
+  const previewSrc = useMemo(
+    () => `/login?mode=login&previewMode=1&previewProfile=${profile}`,
+    [profile]
+  );
 
   const leftLeft = parsePercent(vars["--login-left-left"], isPhoneProfile ? 31 : 24);
   const leftTop = parsePercent(vars["--login-left-top"], isPhoneProfile ? 43 : 36);
@@ -263,6 +268,24 @@ export default function DeviceLayoutEditor() {
     height: "24%",
   };
 
+  function postPreviewVars() {
+    const target = previewFrameRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage(
+      {
+        type: "device-layout-preview-vars",
+        profile,
+        vars,
+      },
+      window.location.origin
+    );
+  }
+
+  useEffect(() => {
+    postPreviewVars();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, vars]);
+
   return (
     <section className="device-layout-shell">
       <div className="bookcase-admin-card device-layout-editor">
@@ -350,10 +373,15 @@ export default function DeviceLayoutEditor() {
           className="device-layout-stage"
           style={{
             aspectRatio: `${stageSize.width} / ${stageSize.height}`,
-            backgroundSize: `${bgSize}% auto`,
-            backgroundPosition: `center ${bgPosY}%`,
           }}
         >
+          <iframe
+            ref={previewFrameRef}
+            src={previewSrc}
+            title={`${DEVICE_PROFILE_LABELS[profile]} Preview`}
+            className="device-layout-stage-frame"
+            onLoad={postPreviewVars}
+          />
           <button
             type="button"
             className="device-drag-box device-drag-left"

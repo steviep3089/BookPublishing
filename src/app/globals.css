@@ -586,6 +586,17 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .login-hero[data-preview-mode="1"] {
+    overflow-x: hidden;
+  }
+
+  .login-hero[data-preview-mode="1"] .login-book {
+    margin: 0;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
   .login-page {
     height: 100%;
     padding: 0.4rem;
@@ -713,6 +724,17 @@ body {
     min-height: var(--login-book-min-height, 440px);
     margin: 0 auto;
     aspect-ratio: auto;
+  }
+
+  .login-hero[data-preview-mode="1"] {
+    overflow-x: hidden;
+  }
+
+  .login-hero[data-preview-mode="1"] .login-book {
+    margin: 0;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .login-page {
@@ -1819,6 +1841,16 @@ body {
   overflow: hidden;
 }
 
+.device-layout-stage-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  z-index: 1;
+  background: #fff;
+}
+
 .device-drag-box {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -1834,6 +1866,7 @@ body {
   user-select: none;
   touch-action: none;
   padding: 0;
+  z-index: 2;
 }
 
 .device-drag-left {

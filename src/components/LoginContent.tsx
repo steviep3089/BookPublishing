@@ -22,6 +22,7 @@ export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const isPreviewMode = searchParams.get("previewMode") === "1";
   const previewProfile = searchParams.get("previewProfile");
   const isResetMode = mode === "reset";
   const authError = searchParams.get("authError");
@@ -55,6 +56,7 @@ export default function LoginContent() {
   const [actionReady, setActionReady] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfileKey | null>(null);
   const [deviceVars, setDeviceVars] = useState<Record<string, string>>({});
+  const [previewVars, setPreviewVars] = useState<Record<string, string>>({});
   const [showPhoneForm, setShowPhoneForm] = useState(false);
   const heroRef = useRef<HTMLElement | null>(null);
   const forcedDeviceProfile: DeviceProfileKey | null = isDeviceProfileKey(previewProfile || "")
@@ -65,11 +67,12 @@ export default function LoginContent() {
   const runtimeStyle = useMemo<CSSProperties | undefined>(() => {
     if (!deviceProfile) return undefined;
     const styleVars: Record<string, string> = {};
-    for (const [key, value] of Object.entries(deviceVars)) {
+    const mergedVars = { ...deviceVars, ...previewVars };
+    for (const [key, value] of Object.entries(mergedVars)) {
       styleVars[key] = value;
     }
     return styleVars as CSSProperties;
-  }, [deviceProfile, deviceVars]);
+  }, [deviceProfile, deviceVars, previewVars]);
 
   useEffect(() => {
     const coarsePointer = window.matchMedia("(pointer: coarse)");
@@ -151,6 +154,25 @@ export default function LoginContent() {
   }, [deviceProfile]);
 
   useEffect(() => {
+    if (!isPreviewMode || !forcedDeviceProfile) return;
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
+      const payload = data as Record<string, unknown>;
+      if (payload.type !== "device-layout-preview-vars") return;
+      if (payload.profile !== forcedDeviceProfile) return;
+      const varsRaw = payload.vars;
+      if (!varsRaw || typeof varsRaw !== "object") return;
+      setPreviewVars(varsRaw as Record<string, string>);
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [forcedDeviceProfile, isPreviewMode]);
+
+  useEffect(() => {
     if (!isPhoneLayout || isResetMode) {
       setShowPhoneForm(true);
       return;
@@ -170,6 +192,13 @@ export default function LoginContent() {
   }, [deviceProfile, showPhoneForm, actionReady]);
 
   useEffect(() => {
+    if (isPreviewMode) {
+      setTypedText(leftText);
+      setTypedAction(rightIntroText);
+      setActionReady(true);
+      return;
+    }
+
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (media.matches) {
       const timer = window.setTimeout(() => {
@@ -203,7 +232,7 @@ export default function LoginContent() {
     }, 18);
 
     return () => clearInterval(timer);
-  }, [leftText, rightIntroText]);
+  }, [isPreviewMode, leftText, rightIntroText]);
 
   useEffect(() => {
     if (!notice) return;
@@ -348,6 +377,7 @@ export default function LoginContent() {
       ref={heroRef}
       className="login-hero"
       data-device-profile={deviceProfile ?? "default"}
+      data-preview-mode={isPreviewMode ? "1" : "0"}
       style={runtimeStyle}
     >
       <section className="login-book">
