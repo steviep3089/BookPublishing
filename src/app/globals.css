@@ -443,17 +443,34 @@ body {
 @media (max-width: 1024px) and (orientation: portrait) {
   .login-page-left,
   .login-page-right {
-    padding-top: 2.6rem;
+    padding-top: var(--login-ipad-page-top, 2.6rem);
   }
 
   .login-page-right-mode {
-    padding-top: 2.4rem;
+    padding-top: var(--login-ipad-right-mode-top, 2.4rem);
   }
 
   .ink-text,
   .typewriter {
-    font-size: 1.16rem;
-    line-height: 1.66;
+    font-size: var(--login-ipad-text-size, 1.16rem);
+    line-height: var(--login-ipad-text-line-height, 1.66);
+  }
+}
+
+@media (max-width: 1366px) and (orientation: landscape) and (pointer: coarse) {
+  .login-page-left,
+  .login-page-right {
+    padding-top: var(--login-ipad-page-top, 2.2rem);
+  }
+
+  .login-page-right-mode {
+    padding-top: var(--login-ipad-right-mode-top, 1.95rem);
+  }
+
+  .ink-text,
+  .typewriter {
+    font-size: var(--login-ipad-text-size, 1rem);
+    line-height: var(--login-ipad-text-line-height, 1.58);
   }
 }
 
@@ -554,16 +571,16 @@ body {
     overflow-x: auto;
     overflow-y: hidden;
     padding: max(0.35rem, env(safe-area-inset-top)) 0 max(0.35rem, env(safe-area-inset-bottom)) 0;
-    background-size: 180% auto;
-    background-position: center 2%;
+    background-size: var(--login-bg-size, 180%) auto;
+    background-position: center var(--login-bg-pos-y, 2%);
   }
 
   .login-book {
-    width: 860px;
-    min-width: 860px;
+    width: var(--login-book-width, 860px);
+    min-width: var(--login-book-min-width, 860px);
     max-width: none;
-    height: 100%;
-    min-height: 100%;
+    height: var(--login-book-height, 100%);
+    min-height: var(--login-book-min-height, 100%);
     margin: 0 auto;
     aspect-ratio: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -576,19 +593,19 @@ body {
   }
 
   .login-page-left {
-    padding-top: 43%;
-    padding-left: 31%;
+    padding-top: var(--login-left-top, 43%);
+    padding-left: var(--login-left-left, 31%);
     padding-right: 10%;
   }
 
   .login-page-right {
-    padding-top: 40%;
-    padding-left: 10%;
+    padding-top: var(--login-right-top, 40%);
+    padding-left: var(--login-right-left, 10%);
     padding-right: 10%;
   }
 
   .login-page-right-mode {
-    padding-top: 37%;
+    padding-top: var(--login-right-mode-top, 37%);
   }
 
   .login-kicker {
@@ -605,7 +622,7 @@ body {
   }
 
   .auth-panel {
-    width: min(43vw, 190px);
+    width: min(var(--login-phone-panel-width, 43vw), var(--login-phone-panel-max-width, 190px));
     gap: 0.14rem;
   }
 
@@ -623,11 +640,11 @@ body {
 
   .auth-form-shell-phone.open .auth-form {
     position: fixed;
-    left: 70%;
-    top: 63%;
+    left: var(--login-popup-left, 70%);
+    top: var(--login-popup-top, 63%);
     transform: translate(-50%, -50%);
-    width: min(82vw, 335px);
-    max-height: 56dvh;
+    width: min(var(--login-popup-width, 82vw), var(--login-popup-max-width, 335px));
+    max-height: var(--login-popup-max-height, 56dvh);
     overflow-y: auto;
     padding: 0.68rem;
     border: 1px solid rgba(142, 108, 72, 0.42);
@@ -659,8 +676,8 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    left: 70%;
-    top: calc(63% + min(30vh, 176px));
+    left: var(--login-popup-left, 70%);
+    top: var(--login-close-top, calc(63% + min(30vh, 176px)));
     transform: translate(-50%, 0);
     width: fit-content;
     border: 1px solid rgba(112, 84, 58, 0.38);
@@ -682,18 +699,18 @@ body {
     height: 100dvh;
     display: block;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
     padding: max(0.3rem, env(safe-area-inset-top)) 0 max(0.3rem, env(safe-area-inset-bottom)) 0;
-    background-size: 130% auto;
-    background-position: center 0;
+    background-size: var(--login-bg-size, 130%) auto;
+    background-position: center var(--login-bg-pos-y, 0%);
   }
 
   .login-book {
-    width: 930px;
-    min-width: 930px;
+    width: var(--login-book-width, 930px);
+    min-width: var(--login-book-min-width, 930px);
     max-width: none;
-    height: 100%;
-    min-height: 100%;
+    height: var(--login-book-height, min(92dvh, 470px));
+    min-height: var(--login-book-min-height, 440px);
     margin: 0 auto;
     aspect-ratio: auto;
   }
@@ -705,19 +722,19 @@ body {
   }
 
   .login-page-left {
-    padding-top: 40%;
-    padding-left: 25%;
+    padding-top: var(--login-left-top, 34%);
+    padding-left: var(--login-left-left, 22%);
     padding-right: 12%;
   }
 
   .login-page-right {
-    padding-top: 37%;
-    padding-left: 10%;
+    padding-top: var(--login-right-top, 32%);
+    padding-left: var(--login-right-left, 10%);
     padding-right: 12%;
   }
 
   .login-page-right-mode {
-    padding-top: 34%;
+    padding-top: var(--login-right-mode-top, 30%);
   }
 
   .ink-text,
@@ -728,7 +745,7 @@ body {
   }
 
   .auth-panel {
-    width: min(38vw, 220px);
+    width: min(var(--login-phone-panel-width, 38vw), var(--login-phone-panel-max-width, 220px));
     gap: 0.14rem;
   }
 
@@ -737,10 +754,10 @@ body {
   }
 
   .auth-form-shell-phone.open .auth-form {
-    left: 69%;
-    top: 57%;
-    width: min(50vw, 268px);
-    max-height: 50dvh;
+    left: var(--login-popup-left, 69%);
+    top: var(--login-popup-top, 57%);
+    width: min(var(--login-popup-width, 50vw), var(--login-popup-max-width, 268px));
+    max-height: var(--login-popup-max-height, 50dvh);
     padding: 0.5rem;
   }
 
@@ -765,8 +782,8 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    left: 69%;
-    top: calc(57% + min(26vh, 110px));
+    left: var(--login-popup-left, 69%);
+    top: var(--login-close-top, calc(57% + min(26vh, 110px)));
     transform: translate(-50%, 0);
     width: fit-content;
     border: 1px solid rgba(112, 84, 58, 0.38);
@@ -1718,6 +1735,46 @@ body {
   color: #f4ede3;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.device-layout-editor {
+  width: min(760px, 94vw);
+  margin-top: 5vh;
+}
+
+.device-layout-editor h1 {
+  margin: 0;
+}
+
+.device-layout-fields {
+  max-height: 50vh;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.device-layout-editor .bookcase-editor-label input,
+.device-layout-editor .bookcase-editor-label select {
+  border: 1px solid rgba(205, 190, 170, 0.45);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  color: #f4ede3;
+  background: rgba(37, 33, 29, 0.85);
+}
+
+.device-layout-editor .bookcase-editor-actions a {
+  border: 1px solid #958d82;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #f0e7da;
+  color: #231d17;
+  text-decoration: none;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 1200px) {

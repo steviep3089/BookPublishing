@@ -46,6 +46,7 @@ export default async function BookcaseAdminPage() {
         <p>Select where you want to edit.</p>
 
         <div className="bookcase-admin-links">
+          <Link href="/bookcase/admin/device-setup">Device Layout Setup</Link>
           {pageLinks.map((item) => (
             <Link key={item.key} href={item.href}>
               {item.label}

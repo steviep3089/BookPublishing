@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Caveat } from "next/font/google";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { isDeviceProfileKey, type DeviceProfileKey } from "@/lib/login/deviceLayout";
 
 type AuthView = "signin" | "signup";
 
@@ -51,17 +52,92 @@ export default function LoginContent() {
   const [typedText, setTypedText] = useState("");
   const [typedAction, setTypedAction] = useState("");
   const [actionReady, setActionReady] = useState(false);
-  const [isPhoneLayout, setIsPhoneLayout] = useState(false);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfileKey | null>(null);
+  const [deviceVars, setDeviceVars] = useState<Record<string, string>>({});
   const [showPhoneForm, setShowPhoneForm] = useState(false);
   const heroRef = useRef<HTMLElement | null>(null);
+  const isPhoneLayout = deviceProfile === "iphone-portrait" || deviceProfile === "iphone-landscape";
+
+  const runtimeStyle = useMemo<CSSProperties | undefined>(() => {
+    if (!deviceProfile) return undefined;
+    const styleVars: Record<string, string> = {};
+    for (const [key, value] of Object.entries(deviceVars)) {
+      styleVars[key] = value;
+    }
+    return styleVars as CSSProperties;
+  }, [deviceProfile, deviceVars]);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 680px), (max-height: 500px) and (pointer: coarse)");
-    const syncLayout = () => setIsPhoneLayout(media.matches);
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const syncLayout = () => {
+      if (!coarsePointer.matches) {
+        setDeviceProfile(null);
+        return;
+      }
+
+      const portrait = window.matchMedia("(orientation: portrait)").matches;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      let nextProfile: DeviceProfileKey | null = null;
+      if (width <= 680 && portrait) {
+        nextProfile = "iphone-portrait";
+      } else if (height <= 500) {
+        nextProfile = "iphone-landscape";
+      } else if (width <= 1024 && portrait) {
+        nextProfile = "ipad-portrait";
+      } else if (width <= 1366 && !portrait) {
+        nextProfile = "ipad-landscape";
+      }
+
+      setDeviceProfile(nextProfile);
+    };
+
     syncLayout();
-    media.addEventListener("change", syncLayout);
-    return () => media.removeEventListener("change", syncLayout);
+    coarsePointer.addEventListener("change", syncLayout);
+    window.addEventListener("resize", syncLayout);
+    window.addEventListener("orientationchange", syncLayout);
+    return () => {
+      coarsePointer.removeEventListener("change", syncLayout);
+      window.removeEventListener("resize", syncLayout);
+      window.removeEventListener("orientationchange", syncLayout);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!deviceProfile) {
+      setDeviceVars({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadDeviceLayout() {
+      try {
+        const response = await fetch(`/api/device-layout?profile=${deviceProfile}&ts=${Date.now()}`, {
+          cache: "no-store",
+        });
+
+        const payload = (await response.json()) as {
+          profile?: string;
+          vars?: Record<string, string>;
+        };
+
+        if (!response.ok || !isDeviceProfileKey(payload.profile || "")) {
+          return;
+        }
+
+        if (!cancelled && payload.vars && typeof payload.vars === "object") {
+          setDeviceVars(payload.vars);
+        }
+      } catch {}
+    }
+
+    void loadDeviceLayout();
+    return () => {
+      cancelled = true;
+    };
+  }, [deviceProfile]);
 
   useEffect(() => {
     if (!isPhoneLayout || isResetMode) {
@@ -72,9 +148,7 @@ export default function LoginContent() {
   }, [isPhoneLayout, isResetMode]);
 
   useEffect(() => {
-    if (!isPhoneLayout || !heroRef.current) return;
-    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-    if (!isPortrait) return;
+    if (deviceProfile !== "iphone-portrait" || !heroRef.current) return;
     const viewport = heroRef.current;
     const center = () => {
       viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
@@ -82,7 +156,7 @@ export default function LoginContent() {
     center();
     const raf = window.requestAnimationFrame(center);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPhoneLayout, showPhoneForm, actionReady]);
+  }, [deviceProfile, showPhoneForm, actionReady]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -259,7 +333,12 @@ export default function LoginContent() {
   }
 
   return (
-    <main ref={heroRef} className="login-hero">
+    <main
+      ref={heroRef}
+      className="login-hero"
+      data-device-profile={deviceProfile ?? "default"}
+      style={runtimeStyle}
+    >
       <section className="login-book">
         <div className="login-page login-page-left">
           <p className="login-kicker">Reading Club</p>
