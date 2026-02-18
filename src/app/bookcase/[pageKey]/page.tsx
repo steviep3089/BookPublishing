@@ -44,8 +44,8 @@ export default async function DynamicBookcasePage({ params }: DynamicBookcasePag
         </Link>
         <Link
           href="/bookcase"
-          className={`bookcase-hotspot ${greatVibes.className}`}
-          style={{ left: "50%", top: "11.22%", fontSize: "5vw" }}
+          className={`bookcase-hotspot bookcase-hotspot-title ${greatVibes.className}`}
+          style={{ left: "50%", top: "11.22%" }}
         >
           {heading}
         </Link>

@@ -31,8 +31,8 @@ export default async function CreatingBooksPage() {
         </Link>
         <Link
           href="/bookcase"
-          className={`bookcase-hotspot ${greatVibes.className}`}
-          style={{ left: "46.56%", top: "11.11%", fontSize: "4.2vw" }}
+          className={`bookcase-hotspot bookcase-hotspot-title ${greatVibes.className}`}
+          style={{ left: "46.56%", top: "11.11%" }}
         >
           Lily-Rose&apos;s books
         </Link>

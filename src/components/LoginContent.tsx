@@ -51,6 +51,24 @@ export default function LoginContent() {
   const [typedText, setTypedText] = useState("");
   const [typedAction, setTypedAction] = useState("");
   const [actionReady, setActionReady] = useState(false);
+  const [isPhoneLayout, setIsPhoneLayout] = useState(false);
+  const [showPhoneForm, setShowPhoneForm] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 680px)");
+    const syncLayout = () => setIsPhoneLayout(media.matches);
+    syncLayout();
+    media.addEventListener("change", syncLayout);
+    return () => media.removeEventListener("change", syncLayout);
+  }, []);
+
+  useEffect(() => {
+    if (!isPhoneLayout || isResetMode) {
+      setShowPhoneForm(true);
+      return;
+    }
+    setShowPhoneForm(false);
+  }, [isPhoneLayout, isResetMode]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -256,6 +274,7 @@ export default function LoginContent() {
                         onClick={() => {
                           resetFeedback();
                           setAuthView("signin");
+                          if (isPhoneLayout) setShowPhoneForm(true);
                         }}
                         disabled={busy}
                       >
@@ -267,6 +286,7 @@ export default function LoginContent() {
                         onClick={() => {
                           resetFeedback();
                           setAuthView("signup");
+                          if (isPhoneLayout) setShowPhoneForm(true);
                         }}
                         disabled={busy}
                       >
@@ -276,7 +296,19 @@ export default function LoginContent() {
                   )}
                 </div>
 
-                {isResetMode ? (
+                <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
+                  {isPhoneLayout && !isResetMode && !showPhoneForm && (
+                    <button
+                      type="button"
+                      className="auth-mobile-open"
+                      onClick={() => setShowPhoneForm(true)}
+                      disabled={busy}
+                    >
+                      {effectiveAuthView === "signin" ? "Open sign in" : "Open create account"}
+                    </button>
+                  )}
+
+                  {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
                   <form className="auth-form" onSubmit={handleResetPassword}>
                     <label className="auth-field">
                       <span>New password</span>
@@ -432,7 +464,19 @@ export default function LoginContent() {
                       {busy ? "Creating..." : "Create user"}
                     </button>
                   </form>
-                )}
+                  ))}
+
+                  {isPhoneLayout && !isResetMode && showPhoneForm && (
+                    <button
+                      type="button"
+                      className="auth-mobile-close"
+                      onClick={() => setShowPhoneForm(false)}
+                      disabled={busy}
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
               </div>
             </>
           )}

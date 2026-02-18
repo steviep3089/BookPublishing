@@ -31,8 +31,8 @@ export default async function RecommendedBooksPage() {
         </Link>
         <Link
           href="/bookcase"
-          className={`bookcase-hotspot ${greatVibes.className}`}
-          style={{ left: "47.86%", top: "11.22%", fontSize: "5vw" }}
+          className={`bookcase-hotspot bookcase-hotspot-title ${greatVibes.className}`}
+          style={{ left: "47.86%", top: "11.22%" }}
         >
           Recommended
         </Link>

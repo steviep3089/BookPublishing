@@ -40,7 +40,7 @@ export default function BookcasePage() {
           <Link
             key={item.key}
             href={item.targetPath}
-            className={`bookcase-hotspot ${caveat.className}`}
+            className={`bookcase-hotspot bookcase-hotspot-home ${caveat.className}`}
             style={{ left: `${item.xPercent}%`, top: `${item.yPercent}%` }}
           >
             {item.label}
