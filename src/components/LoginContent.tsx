@@ -22,6 +22,7 @@ export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
+  const previewProfile = searchParams.get("previewProfile");
   const isResetMode = mode === "reset";
   const authError = searchParams.get("authError");
   const [authView, setAuthView] = useState<AuthView>(mode === "login" ? "signin" : "signup");
@@ -56,6 +57,9 @@ export default function LoginContent() {
   const [deviceVars, setDeviceVars] = useState<Record<string, string>>({});
   const [showPhoneForm, setShowPhoneForm] = useState(false);
   const heroRef = useRef<HTMLElement | null>(null);
+  const forcedDeviceProfile: DeviceProfileKey | null = isDeviceProfileKey(previewProfile || "")
+    ? (previewProfile as DeviceProfileKey)
+    : null;
   const isPhoneLayout = deviceProfile === "iphone-portrait" || deviceProfile === "iphone-landscape";
 
   const runtimeStyle = useMemo<CSSProperties | undefined>(() => {
@@ -70,6 +74,11 @@ export default function LoginContent() {
   useEffect(() => {
     const coarsePointer = window.matchMedia("(pointer: coarse)");
     const syncLayout = () => {
+      if (forcedDeviceProfile) {
+        setDeviceProfile(forcedDeviceProfile);
+        return;
+      }
+
       if (!coarsePointer.matches) {
         setDeviceProfile(null);
         return;
@@ -94,15 +103,17 @@ export default function LoginContent() {
     };
 
     syncLayout();
-    coarsePointer.addEventListener("change", syncLayout);
-    window.addEventListener("resize", syncLayout);
-    window.addEventListener("orientationchange", syncLayout);
+    if (!forcedDeviceProfile) {
+      coarsePointer.addEventListener("change", syncLayout);
+      window.addEventListener("resize", syncLayout);
+      window.addEventListener("orientationchange", syncLayout);
+    }
     return () => {
       coarsePointer.removeEventListener("change", syncLayout);
       window.removeEventListener("resize", syncLayout);
       window.removeEventListener("orientationchange", syncLayout);
     };
-  }, []);
+  }, [forcedDeviceProfile]);
 
   useEffect(() => {
     if (!deviceProfile) {
