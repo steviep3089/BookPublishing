@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Caveat } from "next/font/google";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -53,9 +53,10 @@ export default function LoginContent() {
   const [actionReady, setActionReady] = useState(false);
   const [isPhoneLayout, setIsPhoneLayout] = useState(false);
   const [showPhoneForm, setShowPhoneForm] = useState(false);
+  const heroRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 680px)");
+    const media = window.matchMedia("(max-width: 680px), (max-height: 500px) and (pointer: coarse)");
     const syncLayout = () => setIsPhoneLayout(media.matches);
     syncLayout();
     media.addEventListener("change", syncLayout);
@@ -69,6 +70,19 @@ export default function LoginContent() {
     }
     setShowPhoneForm(false);
   }, [isPhoneLayout, isResetMode]);
+
+  useEffect(() => {
+    if (!isPhoneLayout || !heroRef.current) return;
+    const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+    if (!isPortrait) return;
+    const viewport = heroRef.current;
+    const center = () => {
+      viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
+    };
+    center();
+    const raf = window.requestAnimationFrame(center);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isPhoneLayout, showPhoneForm, actionReady]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -245,7 +259,7 @@ export default function LoginContent() {
   }
 
   return (
-    <main className="login-hero">
+    <main ref={heroRef} className="login-hero">
       <section className="login-book">
         <div className="login-page login-page-left">
           <p className="login-kicker">Reading Club</p>
@@ -297,17 +311,6 @@ export default function LoginContent() {
                 </div>
 
                 <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
-                  {isPhoneLayout && !isResetMode && !showPhoneForm && (
-                    <button
-                      type="button"
-                      className="auth-mobile-open"
-                      onClick={() => setShowPhoneForm(true)}
-                      disabled={busy}
-                    >
-                      {effectiveAuthView === "signin" ? "Open sign in" : "Open create account"}
-                    </button>
-                  )}
-
                   {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
                   <form className="auth-form" onSubmit={handleResetPassword}>
                     <label className="auth-field">
