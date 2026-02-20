@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local converted-book artifacts
+converted book/metadata.db
+converted book/metadata_db_prefs_backup.json
