@@ -1929,14 +1929,15 @@ body {
 
 .device-drag-handle {
   position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 12px;
-  height: 12px;
+  right: -8px;
+  bottom: -8px;
+  width: 18px;
+  height: 18px;
   border-radius: 3px;
   border: 1px solid rgba(255, 247, 233, 0.92);
   background: rgba(236, 214, 180, 0.95);
   cursor: ew-resize;
+  z-index: 3;
 }
 
 .device-drag-handle-size {

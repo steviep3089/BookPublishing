@@ -71,6 +71,26 @@ function toVw(value: number) {
   return `${value.toFixed(2)}vw`;
 }
 
+function clampLeftCenter(center: number, width: number) {
+  const minCenter = width / 2;
+  const maxCenter = 50 - width / 2;
+  return clamp(center, minCenter, maxCenter);
+}
+
+function clampRightCenter(center: number, width: number) {
+  const minCenter = 50 + width / 2;
+  const maxCenter = 100 - width / 2;
+  return clamp(center, minCenter, maxCenter);
+}
+
+function maxLeftWidthForCenter(center: number) {
+  return Math.max(8, Math.min(center * 2, (50 - center) * 2));
+}
+
+function maxRightWidthForCenter(center: number) {
+  return Math.max(8, Math.min((center - 50) * 2, (100 - center) * 2));
+}
+
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
     case "iphone-portrait":
@@ -196,13 +216,16 @@ export default function DeviceLayoutEditor() {
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
-        setVarValue("--login-left-left", toPercent(clamp(activeDrag.leftX + deltaXPercent * 2, 0, 60)));
+        const nextCenter = clampLeftCenter(activeDrag.leftX / 2 + deltaXPercent, activeDrag.leftW);
+        setVarValue("--login-left-left", toPercent(nextCenter * 2));
         setVarValue("--login-left-top", toPercent(clamp(activeDrag.leftY + deltaYPercent, 10, 80)));
         return;
       }
 
       if (activeDrag.target === "left-size") {
-        setVarValue("--login-left-width", toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, 40)));
+        const leftCenter = activeDrag.leftX / 2;
+        const maxWidth = maxLeftWidthForCenter(leftCenter);
+        setVarValue("--login-left-width", toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)));
         setVarValue("--login-left-height", toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)));
         return;
       }
@@ -210,14 +233,17 @@ export default function DeviceLayoutEditor() {
       if (activeDrag.target === "right") {
         const newTop = clamp(activeDrag.rightY + deltaYPercent, 10, 80);
         const topDelta = newTop - activeDrag.rightY;
-        setVarValue("--login-right-left", toPercent(clamp(activeDrag.rightX + deltaXPercent * 2, 0, 60)));
+        const nextCenter = clampRightCenter(50 + activeDrag.rightX / 2 + deltaXPercent, activeDrag.rightW);
+        setVarValue("--login-right-left", toPercent((nextCenter - 50) * 2));
         setVarValue("--login-right-top", toPercent(newTop));
         setVarValue("--login-right-mode-top", toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)));
         return;
       }
 
       if (activeDrag.target === "right-size") {
-        setVarValue("--login-right-width", toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, 46)));
+        const rightCenter = 50 + activeDrag.rightX / 2;
+        const maxWidth = maxRightWidthForCenter(rightCenter);
+        setVarValue("--login-right-width", toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)));
         setVarValue("--login-right-height", toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)));
         return;
       }
@@ -354,6 +380,66 @@ export default function DeviceLayoutEditor() {
             disabled={loading || saving}
           />
         </label>
+
+        {isPhoneProfile && (
+          <>
+            <label className="bookcase-editor-label">
+              <span>Left Insert Width (%)</span>
+              <input
+                type="range"
+                min={8}
+                max={40}
+                value={Math.round(leftWidth)}
+                onChange={(event) => {
+                  const candidate = Number(event.target.value);
+                  const maxWidth = maxLeftWidthForCenter(leftLeft / 2);
+                  setVarValue("--login-left-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
+                }}
+                disabled={loading || saving}
+              />
+            </label>
+
+            <label className="bookcase-editor-label">
+              <span>Left Insert Height (%)</span>
+              <input
+                type="range"
+                min={8}
+                max={46}
+                value={Math.round(leftHeight)}
+                onChange={(event) => setVarValue("--login-left-height", `${event.target.value}%`)}
+                disabled={loading || saving}
+              />
+            </label>
+
+            <label className="bookcase-editor-label">
+              <span>Right Insert Width (%)</span>
+              <input
+                type="range"
+                min={8}
+                max={46}
+                value={Math.round(rightWidth)}
+                onChange={(event) => {
+                  const candidate = Number(event.target.value);
+                  const maxWidth = maxRightWidthForCenter(50 + rightLeft / 2);
+                  setVarValue("--login-right-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
+                }}
+                disabled={loading || saving}
+              />
+            </label>
+
+            <label className="bookcase-editor-label">
+              <span>Right Insert Height (%)</span>
+              <input
+                type="range"
+                min={8}
+                max={46}
+                value={Math.round(rightHeight)}
+                onChange={(event) => setVarValue("--login-right-height", `${event.target.value}%`)}
+                disabled={loading || saving}
+              />
+            </label>
+          </>
+        )}
 
         <details className="bookcase-coords-panel">
           <summary>Advanced Values</summary>
