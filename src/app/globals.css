@@ -615,10 +615,10 @@ body {
   }
 }
 
-@media (max-width: 680px) and (orientation: portrait) {
+@media (max-width: 680px) {
   .login-hero {
-    min-height: 100dvh;
-    height: 100dvh;
+    min-height: 100lvh;
+    height: 100lvh;
     display: block;
     overflow-x: auto;
     overflow-y: hidden;
@@ -778,8 +778,8 @@ body {
 
 @media (max-height: 500px) {
   .login-hero {
-    min-height: 100dvh;
-    height: 100dvh;
+    min-height: 100lvh;
+    height: 100lvh;
     display: block;
     overflow-x: auto;
     overflow-y: auto;

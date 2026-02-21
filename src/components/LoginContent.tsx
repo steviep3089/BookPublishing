@@ -75,7 +75,7 @@ export default function LoginContent() {
   }, [deviceProfile, deviceVars, previewVars]);
 
   useEffect(() => {
-    const phonePortraitQuery = window.matchMedia("(max-width: 680px) and (orientation: portrait)");
+    const phonePortraitQuery = window.matchMedia("(max-width: 680px)");
     const phoneLandscapeQuery = window.matchMedia("(max-height: 500px)");
     const ipadPortraitQuery = window.matchMedia("(max-width: 1024px) and (orientation: portrait)");
     const ipadLandscapeQuery = window.matchMedia(

@@ -121,9 +121,9 @@ const INSERT_TOP_MAX = 88;
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
     case "iphone-portrait":
-      return { width: 390, height: 844 };
+      return { width: 430, height: 932 };
     case "iphone-landscape":
-      return { width: 844, height: 390 };
+      return { width: 932, height: 430 };
     case "ipad-portrait":
       return { width: 768, height: 1024 };
     default:
