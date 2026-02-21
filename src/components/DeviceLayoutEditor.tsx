@@ -39,6 +39,13 @@ type DragState = {
   popupW: number;
 };
 
+type PreviewBounds = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 function labelForVar(key: string) {
   return key
     .replace(/^--login-/, "")
@@ -116,6 +123,12 @@ export default function DeviceLayoutEditor() {
   const [selectedTarget, setSelectedTarget] = useState<BoxTarget>("left");
   const [showGuides, setShowGuides] = useState(true);
   const [snapToGuides, setSnapToGuides] = useState(true);
+  const [previewBounds, setPreviewBounds] = useState<PreviewBounds>({
+    left: 0,
+    top: 0,
+    width: 100,
+    height: 100,
+  });
   const stageRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -215,6 +228,10 @@ export default function DeviceLayoutEditor() {
     if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
+    const useBookSpace = target === "left" || target === "left-size" || target === "right" || target === "right-size";
+    const activeWidth = useBookSpace ? (rect.width * previewBounds.width) / 100 : rect.width;
+    const activeHeight = useBookSpace ? (rect.height * previewBounds.height) / 100 : rect.height;
+    if (!activeWidth || !activeHeight) return;
 
     setSelectedTarget(boxTargetForDragTarget(target));
     setDragState({
@@ -222,8 +239,8 @@ export default function DeviceLayoutEditor() {
       pointerId: event.pointerId,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      stageWidth: rect.width,
-      stageHeight: rect.height,
+      stageWidth: activeWidth,
+      stageHeight: activeHeight,
       leftX: leftLeft,
       leftY: leftTop,
       leftW: leftWidth,
@@ -453,6 +470,58 @@ export default function DeviceLayoutEditor() {
     height: "24%",
   };
 
+  const leftBoxStageStyle = {
+    left: `${previewBounds.left + (previewBounds.width * leftOverlayCenterX) / 100}%`,
+    top: `${previewBounds.top + (previewBounds.height * leftOverlayCenterY) / 100}%`,
+    width: `${(previewBounds.width * leftWidth) / 100}%`,
+    height: `${(previewBounds.height * leftHeight) / 100}%`,
+  };
+
+  const rightBoxStageStyle = {
+    left: `${previewBounds.left + (previewBounds.width * rightOverlayCenterX) / 100}%`,
+    top: `${previewBounds.top + (previewBounds.height * rightOverlayCenterY) / 100}%`,
+    width: `${(previewBounds.width * rightWidth) / 100}%`,
+    height: `${(previewBounds.height * rightHeight) / 100}%`,
+  };
+
+  const guideSeamLeft = previewBounds.left + previewBounds.width * 0.5;
+  const guideLeftCenter = previewBounds.left + previewBounds.width * 0.25;
+  const guideRightCenter = previewBounds.left + previewBounds.width * 0.75;
+
+  function measurePreviewBounds() {
+    const frame = previewFrameRef.current;
+    if (!frame) return;
+
+    const frameWindow = frame.contentWindow;
+    const frameDocument = frame.contentDocument;
+    if (!frameWindow || !frameDocument) return;
+
+    const hero = frameDocument.querySelector(".login-hero") as HTMLElement | null;
+    const book = frameDocument.querySelector(".login-book") as HTMLElement | null;
+    if (!hero || !book) return;
+
+    const heroRect = hero.getBoundingClientRect();
+    const bookRect = book.getBoundingClientRect();
+    if (!heroRect.width || !heroRect.height || !bookRect.width || !bookRect.height) return;
+
+    const nextBounds: PreviewBounds = {
+      left: clamp(((bookRect.left - heroRect.left) / heroRect.width) * 100, 0, 100),
+      top: clamp(((bookRect.top - heroRect.top) / heroRect.height) * 100, 0, 100),
+      width: clamp((bookRect.width / heroRect.width) * 100, 20, 100),
+      height: clamp((bookRect.height / heroRect.height) * 100, 20, 100),
+    };
+
+    setPreviewBounds((current) => {
+      const delta =
+        Math.abs(current.left - nextBounds.left) +
+        Math.abs(current.top - nextBounds.top) +
+        Math.abs(current.width - nextBounds.width) +
+        Math.abs(current.height - nextBounds.height);
+      if (delta < 0.15) return current;
+      return nextBounds;
+    });
+  }
+
   const leftLabel = `Left ${leftOverlayCenterX.toFixed(1)}%, ${leftOverlayCenterY.toFixed(1)}%`;
   const rightLabel = `Right ${rightOverlayCenterX.toFixed(1)}%, ${rightOverlayCenterY.toFixed(1)}%`;
   const popupLabel = `Popup ${popupLeft.toFixed(1)}%, ${popupTop.toFixed(1)}%`;
@@ -474,6 +543,36 @@ export default function DeviceLayoutEditor() {
     postPreviewVars();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, vars]);
+
+  useEffect(() => {
+    const frame = previewFrameRef.current;
+    if (!frame) return;
+
+    let timer: number | null = null;
+    let raf = 0;
+    const runMeasure = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        measurePreviewBounds();
+      });
+    };
+
+    const onFrameLoad = () => {
+      runMeasure();
+      timer = window.setInterval(runMeasure, 400);
+      frame.contentWindow?.addEventListener("resize", runMeasure);
+    };
+
+    frame.addEventListener("load", onFrameLoad);
+    runMeasure();
+
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      frame.removeEventListener("load", onFrameLoad);
+      frame.contentWindow?.removeEventListener("resize", runMeasure);
+      if (timer !== null) window.clearInterval(timer);
+    };
+  }, [profile, reloadToken]);
 
   return (
     <section className="device-layout-shell">
@@ -655,14 +754,14 @@ export default function DeviceLayoutEditor() {
             onLoad={postPreviewVars}
           />
           <div className={`device-layout-guides ${showGuides ? "" : "device-layout-guides-hidden"}`} aria-hidden="true">
-            <span className="device-layout-guide device-layout-guide-seam" />
-            <span className="device-layout-guide device-layout-guide-left-center" />
-            <span className="device-layout-guide device-layout-guide-right-center" />
+            <span className="device-layout-guide device-layout-guide-seam" style={{ left: `${guideSeamLeft}%` }} />
+            <span className="device-layout-guide device-layout-guide-left-center" style={{ left: `${guideLeftCenter}%` }} />
+            <span className="device-layout-guide device-layout-guide-right-center" style={{ left: `${guideRightCenter}%` }} />
           </div>
           <button
             type="button"
             className={`device-drag-box device-drag-left ${selectedTarget === "left" ? "is-selected" : ""}`}
-            style={leftBoxStyle}
+            style={leftBoxStageStyle}
             onPointerDown={(event) => startDrag(event, "left")}
             onClick={() => setSelectedTarget("left")}
           >
@@ -678,7 +777,7 @@ export default function DeviceLayoutEditor() {
           <button
             type="button"
             className={`device-drag-box device-drag-right ${selectedTarget === "right" ? "is-selected" : ""}`}
-            style={rightBoxStyle}
+            style={rightBoxStageStyle}
             onPointerDown={(event) => startDrag(event, "right")}
             onClick={() => setSelectedTarget("right")}
           >
