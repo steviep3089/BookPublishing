@@ -99,6 +99,14 @@ function maxRightWidthForCenter(center: number) {
   return Math.max(8, Math.min((center - 50) * 2, (100 - center) * 2));
 }
 
+function maxLeftWidthForStart(start: number) {
+  return Math.max(8, 50 - start);
+}
+
+function maxRightWidthForStart(start: number) {
+  return Math.max(8, 100 - start);
+}
+
 function leftCenterFromVars(leftLeft: number, leftWidth: number) {
   return leftLeft / 2 + leftWidth / 2;
 }
@@ -299,8 +307,8 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "left-size") {
-        const leftCenter = leftCenterFromVars(activeDrag.leftX, activeDrag.leftW);
-        const maxWidth = maxLeftWidthForCenter(leftCenter);
+        const leftStart = activeDrag.leftX / 2;
+        const maxWidth = maxLeftWidthForStart(leftStart);
         setVarValues({
           "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)),
           "--login-left-height": toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)),
@@ -324,8 +332,8 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "right-size") {
-        const rightCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
-        const maxWidth = maxRightWidthForCenter(rightCenter);
+        const rightStart = 50 + activeDrag.rightX / 2;
+        const maxWidth = maxRightWidthForStart(rightStart);
         setVarValues({
           "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)),
           "--login-right-height": toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)),
@@ -654,7 +662,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(leftWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxLeftWidthForCenter(leftCenterFromVars(leftLeft, leftWidth));
+                  const maxWidth = maxLeftWidthForStart(safeLeftStart);
                   setVarValue("--login-left-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
@@ -682,7 +690,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(rightWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxRightWidthForCenter(rightCenterFromVars(rightLeft, rightWidth));
+                  const maxWidth = maxRightWidthForStart(safeRightStart);
                   setVarValue("--login-right-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
