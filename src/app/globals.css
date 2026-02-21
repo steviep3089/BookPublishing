@@ -1931,7 +1931,6 @@ body {
 
 .device-drag-box {
   position: absolute;
-  transform: translate(-50%, -50%);
   border: 1px dashed rgba(255, 245, 225, 0.95);
   background: rgba(30, 22, 15, 0.28);
   color: #f9f2e6;
@@ -1962,6 +1961,7 @@ body {
 }
 
 .device-drag-popup {
+  transform: translate(-50%, -50%);
   box-shadow: 0 6px 16px rgba(20, 12, 8, 0.3);
 }
 

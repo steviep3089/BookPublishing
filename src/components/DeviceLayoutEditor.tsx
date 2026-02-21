@@ -495,15 +495,15 @@ export default function DeviceLayoutEditor() {
   };
 
   const leftBoxStageStyle = {
-    left: `${previewBounds.left + (previewBounds.width * leftOverlayCenterX) / 100}%`,
-    top: `${previewBounds.top + (previewBounds.height * leftOverlayCenterY) / 100}%`,
+    left: `${previewBounds.left + (previewBounds.width * safeLeftStart) / 100}%`,
+    top: `${previewBounds.top + (previewBounds.height * safeLeftTop) / 100}%`,
     width: `${(previewBounds.width * safeLeftWidth) / 100}%`,
     height: `${(previewBounds.height * safeLeftHeight) / 100}%`,
   };
 
   const rightBoxStageStyle = {
-    left: `${previewBounds.left + (previewBounds.width * rightOverlayCenterX) / 100}%`,
-    top: `${previewBounds.top + (previewBounds.height * rightOverlayCenterY) / 100}%`,
+    left: `${previewBounds.left + (previewBounds.width * safeRightStart) / 100}%`,
+    top: `${previewBounds.top + (previewBounds.height * safeRightTop) / 100}%`,
     width: `${(previewBounds.width * safeRightWidth) / 100}%`,
     height: `${(previewBounds.height * safeRightHeight) / 100}%`,
   };
@@ -546,8 +546,8 @@ export default function DeviceLayoutEditor() {
     });
   }
 
-  const leftLabel = `Left ${leftOverlayCenterX.toFixed(1)}%, ${leftOverlayCenterY.toFixed(1)}%`;
-  const rightLabel = `Right ${rightOverlayCenterX.toFixed(1)}%, ${rightOverlayCenterY.toFixed(1)}%`;
+  const leftLabel = `Left edge ${safeLeftStart.toFixed(1)}%, ${safeLeftTop.toFixed(1)}%`;
+  const rightLabel = `Right edge ${safeRightStart.toFixed(1)}%, ${safeRightTop.toFixed(1)}%`;
   const popupLabel = `Popup ${popupLeft.toFixed(1)}%, ${popupTop.toFixed(1)}%`;
 
   function postPreviewVars() {
