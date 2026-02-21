@@ -589,9 +589,11 @@ export default function DeviceLayoutEditor() {
     height: `${(previewBounds.height * safeRightHeight) / 100}%`,
   };
 
+  const guideBookLeft = previewBounds.left;
+  const guideBookRight = previewBounds.left + previewBounds.width;
   const guideSeamLeft = previewBounds.left + previewBounds.width * 0.5;
-  const guideLeftCenter = previewBounds.left + previewBounds.width * 0.25;
-  const guideRightCenter = previewBounds.left + previewBounds.width * 0.75;
+  const guideBookTop = previewBounds.top;
+  const guideBookBottom = previewBounds.top + previewBounds.height;
 
   function measurePreviewBounds() {
     const frame = previewFrameRef.current;
@@ -861,9 +863,17 @@ export default function DeviceLayoutEditor() {
             onLoad={postPreviewVars}
           />
           <div className={`device-layout-guides ${showGuides ? "" : "device-layout-guides-hidden"}`} aria-hidden="true">
+            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideBookLeft}%` }} />
+            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideBookRight}%` }} />
             <span className="device-layout-guide device-layout-guide-seam" style={{ left: `${guideSeamLeft}%` }} />
-            <span className="device-layout-guide device-layout-guide-left-center" style={{ left: `${guideLeftCenter}%` }} />
-            <span className="device-layout-guide device-layout-guide-right-center" style={{ left: `${guideRightCenter}%` }} />
+            <span
+              className="device-layout-guide-horizontal device-layout-guide-book-edge"
+              style={{ top: `${guideBookTop}%`, left: `${guideBookLeft}%`, width: `${previewBounds.width}%` }}
+            />
+            <span
+              className="device-layout-guide-horizontal device-layout-guide-book-edge"
+              style={{ top: `${guideBookBottom}%`, left: `${guideBookLeft}%`, width: `${previewBounds.width}%` }}
+            />
           </div>
           <button
             type="button"

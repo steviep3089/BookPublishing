@@ -1962,17 +1962,19 @@ body {
   background: rgba(255, 236, 199, 0.36);
 }
 
+.device-layout-guide-horizontal {
+  position: absolute;
+  height: 1px;
+  background: rgba(255, 236, 199, 0.36);
+}
+
 .device-layout-guide-seam {
   left: 50%;
   background: rgba(255, 233, 191, 0.7);
 }
 
-.device-layout-guide-left-center {
-  left: 25%;
-}
-
-.device-layout-guide-right-center {
-  left: 75%;
+.device-layout-guide-book-edge {
+  background: rgba(255, 233, 191, 0.56);
 }
 
 .device-drag-box {
