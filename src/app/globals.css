@@ -49,6 +49,12 @@ body {
   background-attachment: fixed;
 }
 
+@media (pointer: coarse) {
+  .login-hero {
+    background-attachment: scroll;
+  }
+}
+
 @media (max-width: 1200px) {
   .login-hero {
     padding: 1.25rem;
