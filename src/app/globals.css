@@ -1897,6 +1897,38 @@ body {
   background: #fff;
 }
 
+.device-layout-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.device-layout-guides-hidden {
+  opacity: 0;
+}
+
+.device-layout-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 236, 199, 0.36);
+}
+
+.device-layout-guide-seam {
+  left: 50%;
+  background: rgba(255, 233, 191, 0.7);
+}
+
+.device-layout-guide-left-center {
+  left: 25%;
+}
+
+.device-layout-guide-right-center {
+  left: 75%;
+}
+
 .device-drag-box {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -1912,7 +1944,13 @@ body {
   user-select: none;
   touch-action: none;
   padding: 0;
-  z-index: 2;
+  z-index: 3;
+}
+
+.device-drag-box.is-selected {
+  border-style: solid;
+  border-color: rgba(248, 223, 178, 0.98);
+  box-shadow: 0 0 0 2px rgba(52, 34, 18, 0.4);
 }
 
 .device-drag-left {
@@ -1946,6 +1984,20 @@ body {
 
 .device-layout-editor input[type="range"] {
   width: 100%;
+}
+
+.device-layout-tools {
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.device-layout-tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #f4ede3;
+  font-size: 0.92rem;
 }
 
 @media (max-width: 1200px) {

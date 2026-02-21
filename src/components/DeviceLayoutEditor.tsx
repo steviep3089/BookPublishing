@@ -16,6 +16,7 @@ type ApiResult = {
 };
 
 type DragTarget = "left" | "left-size" | "right" | "right-size" | "popup" | "popup-size";
+type BoxTarget = "left" | "right" | "popup";
 
 type DragState = {
   target: DragTarget;
@@ -111,6 +112,10 @@ export default function DeviceLayoutEditor() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [selectedTarget, setSelectedTarget] = useState<BoxTarget>("left");
+  const [showGuides, setShowGuides] = useState(true);
+  const [snapToGuides, setSnapToGuides] = useState(true);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -150,7 +155,7 @@ export default function DeviceLayoutEditor() {
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, reloadToken]);
 
   const isPhoneProfile = profile === "iphone-portrait" || profile === "iphone-landscape";
   const stageSize = stageSizeForProfile(profile);
@@ -186,11 +191,32 @@ export default function DeviceLayoutEditor() {
     }));
   }
 
+  function snapValue(value: number, guides: number[], threshold = 1.25) {
+    if (!snapToGuides) return value;
+    let best = value;
+    let closest = threshold;
+    for (const guide of guides) {
+      const delta = Math.abs(value - guide);
+      if (delta <= closest) {
+        closest = delta;
+        best = guide;
+      }
+    }
+    return best;
+  }
+
+  function boxTargetForDragTarget(target: DragTarget): BoxTarget {
+    if (target === "left" || target === "left-size") return "left";
+    if (target === "right" || target === "right-size") return "right";
+    return "popup";
+  }
+
   function startDrag(event: React.PointerEvent, target: DragTarget) {
     if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
+    setSelectedTarget(boxTargetForDragTarget(target));
     setDragState({
       target,
       pointerId: event.pointerId,
@@ -225,10 +251,12 @@ export default function DeviceLayoutEditor() {
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
-        const nextCenter = clampLeftCenter(activeDrag.leftX / 2 + deltaXPercent, activeDrag.leftW);
+        const nextCenterRaw = clampLeftCenter(activeDrag.leftX / 2 + deltaXPercent, activeDrag.leftW);
+        const nextCenter = clampLeftCenter(snapValue(nextCenterRaw, [12.5, 25, 37.5]), activeDrag.leftW);
+        const nextTop = snapValue(clamp(activeDrag.leftY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
         setVarValues({
           "--login-left-left": toPercent(nextCenter * 2),
-          "--login-left-top": toPercent(clamp(activeDrag.leftY + deltaYPercent, 10, 80)),
+          "--login-left-top": toPercent(nextTop),
         });
         return;
       }
@@ -244,9 +272,10 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "right") {
-        const newTop = clamp(activeDrag.rightY + deltaYPercent, 10, 80);
+        const newTop = snapValue(clamp(activeDrag.rightY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
         const topDelta = newTop - activeDrag.rightY;
-        const nextCenter = clampRightCenter(50 + activeDrag.rightX / 2 + deltaXPercent, activeDrag.rightW);
+        const nextCenterRaw = clampRightCenter(50 + activeDrag.rightX / 2 + deltaXPercent, activeDrag.rightW);
+        const nextCenter = clampRightCenter(snapValue(nextCenterRaw, [62.5, 75, 87.5]), activeDrag.rightW);
         setVarValues({
           "--login-right-left": toPercent((nextCenter - 50) * 2),
           "--login-right-top": toPercent(newTop),
@@ -266,9 +295,11 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "popup") {
+        const nextPopupLeft = snapValue(clamp(activeDrag.popupX + deltaXPercent, 18, 92), [25, 50, 75]);
+        const nextPopupTop = snapValue(clamp(activeDrag.popupY + deltaYPercent, 14, 92), [24, 38, 50, 62, 74]);
         setVarValues({
-          "--login-popup-left": toPercent(clamp(activeDrag.popupX + deltaXPercent, 18, 92)),
-          "--login-popup-top": toPercent(clamp(activeDrag.popupY + deltaYPercent, 14, 92)),
+          "--login-popup-left": toPercent(nextPopupLeft),
+          "--login-popup-top": toPercent(nextPopupTop),
         });
         return;
       }
@@ -309,6 +340,67 @@ export default function DeviceLayoutEditor() {
       window.removeEventListener("pointerup", onPointerUp);
     };
   }, [dragState]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (loading || saving || dragState) return;
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      const step = event.shiftKey ? 1.5 : event.altKey ? 0.1 : 0.35;
+      let dx = 0;
+      let dy = 0;
+      if (event.key === "ArrowLeft") dx = -step;
+      if (event.key === "ArrowRight") dx = step;
+      if (event.key === "ArrowUp") dy = -step;
+      if (event.key === "ArrowDown") dy = step;
+      if (!dx && !dy) return;
+      event.preventDefault();
+
+      if (selectedTarget === "left") {
+        const center = clampLeftCenter(leftLeft / 2 + dx, leftWidth);
+        const top = clamp(leftTop + dy, 10, 80);
+        setVarValues({
+          "--login-left-left": toPercent(center * 2),
+          "--login-left-top": toPercent(top),
+        });
+        return;
+      }
+
+      if (selectedTarget === "right") {
+        const top = clamp(rightTop + dy, 10, 80);
+        const center = clampRightCenter(50 + rightLeft / 2 + dx, rightWidth);
+        setVarValues({
+          "--login-right-left": toPercent((center - 50) * 2),
+          "--login-right-top": toPercent(top),
+          "--login-right-mode-top": toPercent(clamp(rightModeTop + dy, 10, 80)),
+        });
+        return;
+      }
+
+      const popupX = clamp(popupLeft + dx, 18, 92);
+      const popupY = clamp(popupTop + dy, 14, 92);
+      setVarValues({
+        "--login-popup-left": toPercent(popupX),
+        "--login-popup-top": toPercent(popupY),
+      });
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    dragState,
+    leftLeft,
+    leftTop,
+    leftWidth,
+    loading,
+    popupLeft,
+    popupTop,
+    rightLeft,
+    rightModeTop,
+    rightTop,
+    rightWidth,
+    saving,
+    selectedTarget,
+  ]);
 
   async function saveLayout() {
     setSaving(true);
@@ -360,6 +452,10 @@ export default function DeviceLayoutEditor() {
     width: `${popupWidth}%`,
     height: "24%",
   };
+
+  const leftLabel = `Left ${leftOverlayCenterX.toFixed(1)}%, ${leftOverlayCenterY.toFixed(1)}%`;
+  const rightLabel = `Right ${rightOverlayCenterX.toFixed(1)}%, ${rightOverlayCenterY.toFixed(1)}%`;
+  const popupLabel = `Popup ${popupLeft.toFixed(1)}%, ${popupTop.toFixed(1)}%`;
 
   function postPreviewVars() {
     const target = previewFrameRef.current?.contentWindow;
@@ -511,9 +607,32 @@ export default function DeviceLayoutEditor() {
           <button type="button" onClick={() => void saveLayout()} disabled={loading || saving}>
             {saving ? "Saving..." : "Save Device Layout"}
           </button>
+          <button type="button" onClick={() => setReloadToken((current) => current + 1)} disabled={loading || saving}>
+            Reload Profile
+          </button>
           <a href={`/login?mode=login&previewProfile=${profile}`} target="_blank" rel="noreferrer">
             Open Login Tab
           </a>
+        </div>
+
+        <div className="device-layout-tools">
+          <label className="device-layout-tool-toggle">
+            <input
+              type="checkbox"
+              checked={showGuides}
+              onChange={(event) => setShowGuides(event.target.checked)}
+            />
+            <span>Show guides</span>
+          </label>
+          <label className="device-layout-tool-toggle">
+            <input
+              type="checkbox"
+              checked={snapToGuides}
+              onChange={(event) => setSnapToGuides(event.target.checked)}
+            />
+            <span>Snap to guides</span>
+          </label>
+          <p className="bookcase-editor-hint">Arrow keys nudge selection. Hold Shift for faster, Alt for fine.</p>
         </div>
 
         {status && <p className="bookcase-editor-hint">{status}</p>}
@@ -535,13 +654,19 @@ export default function DeviceLayoutEditor() {
             className="device-layout-stage-frame"
             onLoad={postPreviewVars}
           />
+          <div className={`device-layout-guides ${showGuides ? "" : "device-layout-guides-hidden"}`} aria-hidden="true">
+            <span className="device-layout-guide device-layout-guide-seam" />
+            <span className="device-layout-guide device-layout-guide-left-center" />
+            <span className="device-layout-guide device-layout-guide-right-center" />
+          </div>
           <button
             type="button"
-            className="device-drag-box device-drag-left"
+            className={`device-drag-box device-drag-left ${selectedTarget === "left" ? "is-selected" : ""}`}
             style={leftBoxStyle}
             onPointerDown={(event) => startDrag(event, "left")}
+            onClick={() => setSelectedTarget("left")}
           >
-            Left Page Text
+            {leftLabel}
             <span
               className="device-drag-handle device-drag-handle-size"
               onPointerDown={(event) => {
@@ -552,11 +677,12 @@ export default function DeviceLayoutEditor() {
           </button>
           <button
             type="button"
-            className="device-drag-box device-drag-right"
+            className={`device-drag-box device-drag-right ${selectedTarget === "right" ? "is-selected" : ""}`}
             style={rightBoxStyle}
             onPointerDown={(event) => startDrag(event, "right")}
+            onClick={() => setSelectedTarget("right")}
           >
-            Right Page Panel
+            {rightLabel}
             <span
               className="device-drag-handle device-drag-handle-size"
               onPointerDown={(event) => {
@@ -569,11 +695,12 @@ export default function DeviceLayoutEditor() {
           {isPhoneProfile && (
             <button
               type="button"
-              className="device-drag-box device-drag-popup"
+              className={`device-drag-box device-drag-popup ${selectedTarget === "popup" ? "is-selected" : ""}`}
               style={popupBoxStyle}
               onPointerDown={(event) => startDrag(event, "popup")}
+              onClick={() => setSelectedTarget("popup")}
             >
-              Popup Form
+              {popupLabel}
               <span
                 className="device-drag-handle"
                 onPointerDown={(event) => {
