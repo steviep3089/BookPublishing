@@ -852,8 +852,6 @@ export default function DeviceLayoutEditor() {
           ref={stageRef}
           className="device-layout-stage"
           style={{
-            width: `${stageSize.width}px`,
-            maxWidth: "100%",
             aspectRatio: `${stageSize.width} / ${stageSize.height}`,
           }}
         >
