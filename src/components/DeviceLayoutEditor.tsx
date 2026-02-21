@@ -115,6 +115,9 @@ function rightCenterFromVars(rightLeft: number, rightWidth: number) {
   return 50 + rightLeft / 2 + rightWidth / 2;
 }
 
+const INSERT_TOP_MIN = 0;
+const INSERT_TOP_MAX = 88;
+
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
     case "iphone-portrait":
@@ -216,8 +219,8 @@ export default function DeviceLayoutEditor() {
 
   const safeLeftStart = clamp(leftLeft / 2, 0, 50 - safeLeftWidth);
   const safeRightStart = clamp(50 + rightLeft / 2, 50, 100 - safeRightWidth);
-  const safeLeftTop = clamp(leftTop, 10, 80);
-  const safeRightTop = clamp(rightTop, 10, 80);
+  const safeLeftTop = clamp(leftTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
+  const safeRightTop = clamp(rightTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
 
   function setVarValue(key: string, value: string) {
     setVars((current) => ({ ...current, [key]: value }));
@@ -348,7 +351,10 @@ export default function DeviceLayoutEditor() {
         const nextCenterRaw = clampLeftCenter(currentCenter + deltaXPercent, activeDrag.leftW);
         const nextCenter = clampLeftCenter(snapValue(nextCenterRaw, [12.5, 25, 37.5]), activeDrag.leftW);
         const nextLeftStart = nextCenter - activeDrag.leftW / 2;
-        const nextTop = snapValue(clamp(activeDrag.leftY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
+        const nextTop = snapValue(
+          clamp(activeDrag.leftY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX),
+          [10, 20, 30, 40, 50, 60, 70]
+        );
         setVarValues({
           "--login-left-left": toPercent(nextLeftStart * 2),
           "--login-left-top": toPercent(nextTop),
@@ -367,7 +373,10 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "right") {
-        const newTop = snapValue(clamp(activeDrag.rightY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
+        const newTop = snapValue(
+          clamp(activeDrag.rightY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX),
+          [10, 20, 30, 40, 50, 60, 70]
+        );
         const topDelta = newTop - activeDrag.rightY;
         const currentCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
         const nextCenterRaw = clampRightCenter(currentCenter + deltaXPercent, activeDrag.rightW);
@@ -376,7 +385,9 @@ export default function DeviceLayoutEditor() {
         setVarValues({
           "--login-right-left": toPercent((nextRightStart - 50) * 2),
           "--login-right-top": toPercent(newTop),
-          "--login-right-mode-top": toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)),
+          "--login-right-mode-top": toPercent(
+            clamp(activeDrag.rightModeY + topDelta, INSERT_TOP_MIN, INSERT_TOP_MAX)
+          ),
         });
         return;
       }
@@ -455,7 +466,7 @@ export default function DeviceLayoutEditor() {
       if (selectedTarget === "left") {
         const center = clampLeftCenter(leftCenterFromVars(safeLeftStart * 2, safeLeftWidth) + dx, safeLeftWidth);
         const leftStart = center - safeLeftWidth / 2;
-        const top = clamp(safeLeftTop + dy, 10, 80);
+        const top = clamp(safeLeftTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
         setVarValues({
           "--login-left-left": toPercent(leftStart * 2),
           "--login-left-top": toPercent(top),
@@ -464,7 +475,7 @@ export default function DeviceLayoutEditor() {
       }
 
       if (selectedTarget === "right") {
-        const top = clamp(safeRightTop + dy, 10, 80);
+        const top = clamp(safeRightTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
         const center = clampRightCenter(
           rightCenterFromVars((safeRightStart - 50) * 2, safeRightWidth) + dx,
           safeRightWidth
@@ -473,7 +484,9 @@ export default function DeviceLayoutEditor() {
         setVarValues({
           "--login-right-left": toPercent((rightStart - 50) * 2),
           "--login-right-top": toPercent(top),
-          "--login-right-mode-top": toPercent(clamp(rightModeTop + dy, 10, 80)),
+          "--login-right-mode-top": toPercent(
+            clamp(rightModeTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX)
+          ),
         });
         return;
       }
