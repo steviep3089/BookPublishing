@@ -179,6 +179,13 @@ export default function DeviceLayoutEditor() {
     setVars((current) => ({ ...current, [key]: value }));
   }
 
+  function setVarValues(nextValues: Record<string, string>) {
+    setVars((current) => ({
+      ...current,
+      ...nextValues,
+    }));
+  }
+
   function startDrag(event: React.PointerEvent, target: DragTarget) {
     if (!stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
@@ -210,23 +217,29 @@ export default function DeviceLayoutEditor() {
     if (!dragState) return;
     const activeDrag = dragState;
 
-    function onPointerMove(event: PointerEvent) {
-      if (event.pointerId !== activeDrag.pointerId) return;
+    let animationFrameId = 0;
+    let queuedEvent: PointerEvent | null = null;
+
+    function applyPointerMove(event: PointerEvent) {
       const deltaXPercent = ((event.clientX - activeDrag.startClientX) / activeDrag.stageWidth) * 100;
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
         const nextCenter = clampLeftCenter(activeDrag.leftX / 2 + deltaXPercent, activeDrag.leftW);
-        setVarValue("--login-left-left", toPercent(nextCenter * 2));
-        setVarValue("--login-left-top", toPercent(clamp(activeDrag.leftY + deltaYPercent, 10, 80)));
+        setVarValues({
+          "--login-left-left": toPercent(nextCenter * 2),
+          "--login-left-top": toPercent(clamp(activeDrag.leftY + deltaYPercent, 10, 80)),
+        });
         return;
       }
 
       if (activeDrag.target === "left-size") {
         const leftCenter = activeDrag.leftX / 2;
         const maxWidth = maxLeftWidthForCenter(leftCenter);
-        setVarValue("--login-left-width", toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)));
-        setVarValue("--login-left-height", toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)));
+        setVarValues({
+          "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)),
+          "--login-left-height": toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)),
+        });
         return;
       }
 
@@ -234,28 +247,50 @@ export default function DeviceLayoutEditor() {
         const newTop = clamp(activeDrag.rightY + deltaYPercent, 10, 80);
         const topDelta = newTop - activeDrag.rightY;
         const nextCenter = clampRightCenter(50 + activeDrag.rightX / 2 + deltaXPercent, activeDrag.rightW);
-        setVarValue("--login-right-left", toPercent((nextCenter - 50) * 2));
-        setVarValue("--login-right-top", toPercent(newTop));
-        setVarValue("--login-right-mode-top", toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)));
+        setVarValues({
+          "--login-right-left": toPercent((nextCenter - 50) * 2),
+          "--login-right-top": toPercent(newTop),
+          "--login-right-mode-top": toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)),
+        });
         return;
       }
 
       if (activeDrag.target === "right-size") {
         const rightCenter = 50 + activeDrag.rightX / 2;
         const maxWidth = maxRightWidthForCenter(rightCenter);
-        setVarValue("--login-right-width", toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)));
-        setVarValue("--login-right-height", toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)));
+        setVarValues({
+          "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)),
+          "--login-right-height": toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)),
+        });
         return;
       }
 
       if (activeDrag.target === "popup") {
-        setVarValue("--login-popup-left", toPercent(clamp(activeDrag.popupX + deltaXPercent, 18, 92)));
-        setVarValue("--login-popup-top", toPercent(clamp(activeDrag.popupY + deltaYPercent, 14, 92)));
+        setVarValues({
+          "--login-popup-left": toPercent(clamp(activeDrag.popupX + deltaXPercent, 18, 92)),
+          "--login-popup-top": toPercent(clamp(activeDrag.popupY + deltaYPercent, 14, 92)),
+        });
         return;
       }
 
       if (activeDrag.target === "popup-size") {
         setVarValue("--login-popup-width", toVw(clamp(activeDrag.popupW + deltaXPercent, 20, 96)));
+      }
+    }
+
+    function flushQueuedMove() {
+      animationFrameId = 0;
+      if (!queuedEvent) return;
+      const nextEvent = queuedEvent;
+      queuedEvent = null;
+      applyPointerMove(nextEvent);
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      if (event.pointerId !== activeDrag.pointerId) return;
+      queuedEvent = event;
+      if (!animationFrameId) {
+        animationFrameId = window.requestAnimationFrame(flushQueuedMove);
       }
     }
 
@@ -267,6 +302,9 @@ export default function DeviceLayoutEditor() {
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
     return () => {
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
@@ -297,16 +335,21 @@ export default function DeviceLayoutEditor() {
     }
   }
 
+  const leftOverlayCenterX = isPhoneProfile ? leftLeft / 2 + leftWidth / 2 : leftLeft / 2;
+  const leftOverlayCenterY = isPhoneProfile ? leftTop + leftHeight / 2 : leftTop;
+  const rightOverlayCenterX = isPhoneProfile ? 50 + rightLeft / 2 + rightWidth / 2 : 50 + rightLeft / 2;
+  const rightOverlayCenterY = isPhoneProfile ? rightTop + rightHeight / 2 : rightTop;
+
   const leftBoxStyle = {
-    left: `${leftLeft / 2}%`,
-    top: `${leftTop}%`,
+    left: `${leftOverlayCenterX}%`,
+    top: `${leftOverlayCenterY}%`,
     width: `${leftWidth}%`,
     height: `${leftHeight}%`,
   };
 
   const rightBoxStyle = {
-    left: `${50 + rightLeft / 2}%`,
-    top: `${rightTop}%`,
+    left: `${rightOverlayCenterX}%`,
+    top: `${rightOverlayCenterY}%`,
     width: `${rightWidth}%`,
     height: `${rightHeight}%`,
   };
