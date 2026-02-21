@@ -656,19 +656,39 @@ body {
   }
 
   .login-page-left {
-    padding-top: var(--login-left-top, 43%);
-    padding-left: var(--login-left-left, 31%);
-    padding-right: 10%;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .login-page-right {
-    padding-top: var(--login-right-top, 40%);
-    padding-left: var(--login-right-left, 10%);
-    padding-right: 10%;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .login-page-right-mode {
-    padding-top: var(--login-right-mode-top, 37%);
+    padding-top: 0;
+  }
+
+  .login-page-left .login-left-insert,
+  .login-page-right .login-right-insert {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  .login-page-left .login-left-insert {
+    left: var(--login-left-left, 31%);
+    top: var(--login-left-top, 43%);
+  }
+
+  .login-page-right .login-right-insert {
+    left: var(--login-right-left, 10%);
+    top: var(--login-right-top, 40%);
+  }
+
+  .login-page-right-mode .login-right-insert {
+    top: var(--login-right-mode-top, 37%);
   }
 
   .login-kicker {
@@ -796,19 +816,39 @@ body {
   }
 
   .login-page-left {
-    padding-top: var(--login-left-top, 34%);
-    padding-left: var(--login-left-left, 22%);
-    padding-right: 12%;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .login-page-right {
-    padding-top: var(--login-right-top, 32%);
-    padding-left: var(--login-right-left, 10%);
-    padding-right: 12%;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .login-page-right-mode {
-    padding-top: var(--login-right-mode-top, 30%);
+    padding-top: 0;
+  }
+
+  .login-page-left .login-left-insert,
+  .login-page-right .login-right-insert {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  .login-page-left .login-left-insert {
+    left: var(--login-left-left, 22%);
+    top: var(--login-left-top, 34%);
+  }
+
+  .login-page-right .login-right-insert {
+    left: var(--login-right-left, 10%);
+    top: var(--login-right-top, 32%);
+  }
+
+  .login-page-right-mode .login-right-insert {
+    top: var(--login-right-mode-top, 30%);
   }
 
   .ink-text,

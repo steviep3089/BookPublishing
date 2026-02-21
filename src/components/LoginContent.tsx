@@ -75,30 +75,36 @@ export default function LoginContent() {
   }, [deviceProfile, deviceVars, previewVars]);
 
   useEffect(() => {
-    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const phonePortraitQuery = window.matchMedia("(max-width: 680px) and (orientation: portrait)");
+    const phoneLandscapeQuery = window.matchMedia("(max-height: 500px)");
+    const ipadPortraitQuery = window.matchMedia("(max-width: 1024px) and (orientation: portrait)");
+    const ipadLandscapeQuery = window.matchMedia(
+      "(max-width: 1366px) and (orientation: landscape) and (pointer: coarse)"
+    );
+
+    function addMediaChangeListener(query: MediaQueryList, listener: () => void) {
+      if (typeof query.addEventListener === "function") {
+        query.addEventListener("change", listener);
+        return () => query.removeEventListener("change", listener);
+      }
+      query.addListener(listener);
+      return () => query.removeListener(listener);
+    }
+
     const syncLayout = () => {
       if (forcedDeviceProfile) {
         setDeviceProfile(forcedDeviceProfile);
         return;
       }
 
-      if (!coarsePointer.matches) {
-        setDeviceProfile(null);
-        return;
-      }
-
-      const portrait = window.matchMedia("(orientation: portrait)").matches;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-
       let nextProfile: DeviceProfileKey | null = null;
-      if (width <= 680 && portrait) {
+      if (phonePortraitQuery.matches) {
         nextProfile = "iphone-portrait";
-      } else if (height <= 500) {
+      } else if (phoneLandscapeQuery.matches) {
         nextProfile = "iphone-landscape";
-      } else if (width <= 1024 && portrait) {
+      } else if (ipadPortraitQuery.matches) {
         nextProfile = "ipad-portrait";
-      } else if (width <= 1366 && !portrait) {
+      } else if (ipadLandscapeQuery.matches) {
         nextProfile = "ipad-landscape";
       }
 
@@ -107,15 +113,22 @@ export default function LoginContent() {
 
     syncLayout();
     if (!forcedDeviceProfile) {
-      coarsePointer.addEventListener("change", syncLayout);
+      const removePhonePortrait = addMediaChangeListener(phonePortraitQuery, syncLayout);
+      const removePhoneLandscape = addMediaChangeListener(phoneLandscapeQuery, syncLayout);
+      const removeIpadPortrait = addMediaChangeListener(ipadPortraitQuery, syncLayout);
+      const removeIpadLandscape = addMediaChangeListener(ipadLandscapeQuery, syncLayout);
       window.addEventListener("resize", syncLayout);
       window.addEventListener("orientationchange", syncLayout);
+      return () => {
+        removePhonePortrait();
+        removePhoneLandscape();
+        removeIpadPortrait();
+        removeIpadLandscape();
+        window.removeEventListener("resize", syncLayout);
+        window.removeEventListener("orientationchange", syncLayout);
+      };
     }
-    return () => {
-      coarsePointer.removeEventListener("change", syncLayout);
-      window.removeEventListener("resize", syncLayout);
-      window.removeEventListener("orientationchange", syncLayout);
-    };
+    return undefined;
   }, [forcedDeviceProfile]);
 
   useEffect(() => {

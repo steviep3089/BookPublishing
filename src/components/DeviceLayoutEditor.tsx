@@ -221,6 +221,7 @@ export default function DeviceLayoutEditor() {
   const safeRightStart = clamp(50 + rightLeft / 2, 50, 100 - safeRightWidth);
   const safeLeftTop = clamp(leftTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightTop = clamp(rightTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
+  const safeRightModeTop = clamp(rightModeTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
 
   function setVarValue(key: string, value: string) {
     setVars((current) => ({ ...current, [key]: value }));
@@ -260,6 +261,9 @@ export default function DeviceLayoutEditor() {
     if (Math.abs(rightTop - safeRightTop) > 0.01) {
       nextValues["--login-right-top"] = toPercent(safeRightTop);
     }
+    if (Math.abs(rightModeTop - safeRightModeTop) > 0.01) {
+      nextValues["--login-right-mode-top"] = toPercent(safeRightModeTop);
+    }
 
     if (Object.keys(nextValues).length > 0) {
       setVarValues(nextValues);
@@ -271,6 +275,7 @@ export default function DeviceLayoutEditor() {
     leftWidth,
     rightHeight,
     rightLeft,
+    rightModeTop,
     rightTop,
     rightWidth,
     safeLeftHeight,
@@ -280,6 +285,7 @@ export default function DeviceLayoutEditor() {
     safeRightHeight,
     safeRightStart,
     safeRightTop,
+    safeRightModeTop,
     safeRightWidth,
   ]);
 
@@ -325,8 +331,8 @@ export default function DeviceLayoutEditor() {
       leftW: safeLeftWidth,
       leftH: safeLeftHeight,
       rightX: (safeRightStart - 50) * 2,
-      rightY: safeRightTop,
-      rightModeY: rightModeTop,
+      rightY: safeRightModeTop,
+      rightModeY: safeRightModeTop,
       rightW: safeRightWidth,
       rightH: safeRightHeight,
       popupX: popupLeft,
@@ -377,7 +383,6 @@ export default function DeviceLayoutEditor() {
           clamp(activeDrag.rightY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX),
           [10, 20, 30, 40, 50, 60, 70]
         );
-        const topDelta = newTop - activeDrag.rightY;
         const currentCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
         const nextCenterRaw = clampRightCenter(currentCenter + deltaXPercent, activeDrag.rightW);
         const nextCenter = clampRightCenter(snapValue(nextCenterRaw, [62.5, 75, 87.5]), activeDrag.rightW);
@@ -385,9 +390,7 @@ export default function DeviceLayoutEditor() {
         setVarValues({
           "--login-right-left": toPercent((nextRightStart - 50) * 2),
           "--login-right-top": toPercent(newTop),
-          "--login-right-mode-top": toPercent(
-            clamp(activeDrag.rightModeY + topDelta, INSERT_TOP_MIN, INSERT_TOP_MAX)
-          ),
+          "--login-right-mode-top": toPercent(newTop),
         });
         return;
       }
@@ -475,7 +478,7 @@ export default function DeviceLayoutEditor() {
       }
 
       if (selectedTarget === "right") {
-        const top = clamp(safeRightTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
+        const top = clamp(safeRightModeTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
         const center = clampRightCenter(
           rightCenterFromVars((safeRightStart - 50) * 2, safeRightWidth) + dx,
           safeRightWidth
@@ -484,9 +487,7 @@ export default function DeviceLayoutEditor() {
         setVarValues({
           "--login-right-left": toPercent((rightStart - 50) * 2),
           "--login-right-top": toPercent(top),
-          "--login-right-mode-top": toPercent(
-            clamp(rightModeTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX)
-          ),
+          "--login-right-mode-top": toPercent(top),
         });
         return;
       }
@@ -518,7 +519,7 @@ export default function DeviceLayoutEditor() {
     safeLeftTop,
     safeLeftWidth,
     safeRightStart,
-    safeRightTop,
+    safeRightModeTop,
     safeRightWidth,
     selectedTarget,
   ]);
@@ -551,7 +552,7 @@ export default function DeviceLayoutEditor() {
   const leftOverlayCenterX = isPhoneProfile ? safeLeftStart + safeLeftWidth / 2 : safeLeftStart;
   const leftOverlayCenterY = isPhoneProfile ? safeLeftTop + safeLeftHeight / 2 : safeLeftTop;
   const rightOverlayCenterX = isPhoneProfile ? safeRightStart + safeRightWidth / 2 : safeRightStart;
-  const rightOverlayCenterY = isPhoneProfile ? safeRightTop + safeRightHeight / 2 : safeRightTop;
+  const rightOverlayCenterY = isPhoneProfile ? safeRightModeTop + safeRightHeight / 2 : safeRightModeTop;
 
   const leftBoxStyle = {
     left: `${leftOverlayCenterX}%`,
@@ -583,7 +584,7 @@ export default function DeviceLayoutEditor() {
 
   const rightBoxStageStyle = {
     left: `${previewBounds.left + (previewBounds.width * safeRightStart) / 100}%`,
-    top: `${previewBounds.top + (previewBounds.height * safeRightTop) / 100}%`,
+    top: `${previewBounds.top + (previewBounds.height * safeRightModeTop) / 100}%`,
     width: `${(previewBounds.width * safeRightWidth) / 100}%`,
     height: `${(previewBounds.height * safeRightHeight) / 100}%`,
   };
@@ -629,7 +630,7 @@ export default function DeviceLayoutEditor() {
   }
 
   const leftLabel = `Left edge ${safeLeftStart.toFixed(1)}%, ${safeLeftTop.toFixed(1)}%`;
-  const rightLabel = `Right edge ${safeRightStart.toFixed(1)}%, ${safeRightTop.toFixed(1)}%`;
+  const rightLabel = `Right edge ${safeRightStart.toFixed(1)}%, ${safeRightModeTop.toFixed(1)}%`;
   const popupLabel = `Popup ${popupLeft.toFixed(1)}%, ${popupTop.toFixed(1)}%`;
 
   function postPreviewVars() {
