@@ -215,7 +215,11 @@ export default function DeviceLayoutEditor() {
   const popupLeft = parsePercent(vars["--login-popup-left"], 70);
   const popupTop = parsePercent(vars["--login-popup-top"], 63);
   const popupWidth = parseVw(vars["--login-popup-width"], 82);
-  const bgSize = parsePercent(vars["--login-bg-size"], isPhoneProfile ? 180 : 100);
+  const bgSizeX = parsePercent(
+    vars["--login-bg-size-x"],
+    parsePercent(vars["--login-bg-size"], isPhoneProfile ? 180 : 100)
+  );
+  const bgSizeY = parsePercent(vars["--login-bg-size-y"], 100);
   const bgPosY = parsePercent(vars["--login-bg-pos-y"], 2);
 
   const safeLeftWidth = clamp(leftWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
@@ -714,17 +718,55 @@ export default function DeviceLayoutEditor() {
           </select>
         </div>
 
-        <label className="bookcase-editor-label">
-          <span>Background Zoom (%)</span>
-          <input
-            type="range"
-            min={80}
-            max={220}
-            value={Math.round(bgSize)}
-            onChange={(event) => setVarValue("--login-bg-size", `${event.target.value}%`)}
-            disabled={loading || saving}
-          />
-        </label>
+        {isPhoneProfile ? (
+          <>
+            <label className="bookcase-editor-label">
+              <span>Background Width (%)</span>
+              <input
+                type="range"
+                min={60}
+                max={280}
+                value={Math.round(bgSizeX)}
+                onChange={(event) =>
+                  setVarValues({
+                    "--login-bg-size-x": `${event.target.value}%`,
+                    "--login-bg-size": `${event.target.value}%`,
+                  })
+                }
+                disabled={loading || saving}
+              />
+            </label>
+
+            <label className="bookcase-editor-label">
+              <span>Background Height (%)</span>
+              <input
+                type="range"
+                min={60}
+                max={220}
+                value={Math.round(bgSizeY)}
+                onChange={(event) => setVarValue("--login-bg-size-y", `${event.target.value}%`)}
+                disabled={loading || saving}
+              />
+            </label>
+          </>
+        ) : (
+          <label className="bookcase-editor-label">
+            <span>Background Zoom (%)</span>
+            <input
+              type="range"
+              min={80}
+              max={220}
+              value={Math.round(bgSizeX)}
+              onChange={(event) =>
+                setVarValues({
+                  "--login-bg-size": `${event.target.value}%`,
+                  "--login-bg-size-x": `${event.target.value}%`,
+                })
+              }
+              disabled={loading || saving}
+            />
+          </label>
+        )}
 
         <label className="bookcase-editor-label">
           <span>Background Y Position (%)</span>

@@ -625,7 +625,7 @@ body {
     overflow-x: hidden;
     overflow-y: hidden;
     padding: max(0.35rem, env(safe-area-inset-top)) 0 max(0.35rem, env(safe-area-inset-bottom)) 0;
-    background-size: var(--login-bg-size, 180%) auto;
+    background-size: var(--login-bg-size-x, var(--login-bg-size, 180%)) var(--login-bg-size-y, 100%);
     background-position: center var(--login-bg-pos-y, 2%);
   }
 
@@ -783,7 +783,7 @@ body {
     overflow-x: auto;
     overflow-y: auto;
     padding: max(0.3rem, env(safe-area-inset-top)) 0 max(0.3rem, env(safe-area-inset-bottom)) 0;
-    background-size: var(--login-bg-size, 130%) auto;
+    background-size: var(--login-bg-size-x, var(--login-bg-size, 130%)) var(--login-bg-size-y, 100%);
     background-position: center var(--login-bg-pos-y, 0%);
   }
 
@@ -921,7 +921,7 @@ body {
   overflow-x: hidden;
   overflow-y: hidden;
   padding: max(0.35rem, env(safe-area-inset-top)) 0 max(0.35rem, env(safe-area-inset-bottom)) 0;
-  background-size: var(--login-bg-size, 180%) auto;
+  background-size: var(--login-bg-size-x, var(--login-bg-size, 180%)) var(--login-bg-size-y, 100%);
   background-position: center var(--login-bg-pos-y, 2%);
 }
 

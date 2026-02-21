@@ -17,6 +17,8 @@ export const DEVICE_PROFILE_LABELS: Record<DeviceProfileKey, string> = {
 export const DEFAULT_DEVICE_LAYOUTS: Record<DeviceProfileKey, Record<string, string>> = {
   "iphone-portrait": {
     "--login-bg-size": "180%",
+    "--login-bg-size-x": "180%",
+    "--login-bg-size-y": "100%",
     "--login-bg-pos-y": "2%",
     "--login-book-width": "860px",
     "--login-book-min-width": "860px",
@@ -42,6 +44,8 @@ export const DEFAULT_DEVICE_LAYOUTS: Record<DeviceProfileKey, Record<string, str
   },
   "iphone-landscape": {
     "--login-bg-size": "130%",
+    "--login-bg-size-x": "130%",
+    "--login-bg-size-y": "100%",
     "--login-bg-pos-y": "0%",
     "--login-book-width": "930px",
     "--login-book-min-width": "930px",
