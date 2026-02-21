@@ -201,6 +201,16 @@ export default function DeviceLayoutEditor() {
   const bgSize = parsePercent(vars["--login-bg-size"], isPhoneProfile ? 180 : 100);
   const bgPosY = parsePercent(vars["--login-bg-pos-y"], 2);
 
+  const safeLeftWidth = clamp(leftWidth, 8, 46);
+  const safeRightWidth = clamp(rightWidth, 8, 46);
+  const safeLeftHeight = clamp(leftHeight, 8, 46);
+  const safeRightHeight = clamp(rightHeight, 8, 46);
+
+  const safeLeftStart = clamp(leftLeft / 2, 0, 50 - safeLeftWidth);
+  const safeRightStart = clamp(50 + rightLeft / 2, 50, 100 - safeRightWidth);
+  const safeLeftTop = clamp(leftTop, 10, 80);
+  const safeRightTop = clamp(rightTop, 10, 80);
+
   function setVarValue(key: string, value: string) {
     setVars((current) => ({ ...current, [key]: value }));
   }
@@ -250,14 +260,14 @@ export default function DeviceLayoutEditor() {
       stageWidth: activeWidth,
       stageHeight: activeHeight,
       leftX: leftLeft,
-      leftY: leftTop,
-      leftW: leftWidth,
-      leftH: leftHeight,
+      leftY: safeLeftTop,
+      leftW: safeLeftWidth,
+      leftH: safeLeftHeight,
       rightX: rightLeft,
-      rightY: rightTop,
+      rightY: safeRightTop,
       rightModeY: rightModeTop,
-      rightW: rightWidth,
-      rightH: rightHeight,
+      rightW: safeRightWidth,
+      rightH: safeRightHeight,
       popupX: popupLeft,
       popupY: popupTop,
       popupW: popupWidth,
@@ -458,23 +468,23 @@ export default function DeviceLayoutEditor() {
     }
   }
 
-  const leftOverlayCenterX = isPhoneProfile ? leftLeft / 2 + leftWidth / 2 : leftLeft / 2;
-  const leftOverlayCenterY = isPhoneProfile ? leftTop + leftHeight / 2 : leftTop;
-  const rightOverlayCenterX = isPhoneProfile ? 50 + rightLeft / 2 + rightWidth / 2 : 50 + rightLeft / 2;
-  const rightOverlayCenterY = isPhoneProfile ? rightTop + rightHeight / 2 : rightTop;
+  const leftOverlayCenterX = isPhoneProfile ? safeLeftStart + safeLeftWidth / 2 : safeLeftStart;
+  const leftOverlayCenterY = isPhoneProfile ? safeLeftTop + safeLeftHeight / 2 : safeLeftTop;
+  const rightOverlayCenterX = isPhoneProfile ? safeRightStart + safeRightWidth / 2 : safeRightStart;
+  const rightOverlayCenterY = isPhoneProfile ? safeRightTop + safeRightHeight / 2 : safeRightTop;
 
   const leftBoxStyle = {
     left: `${leftOverlayCenterX}%`,
     top: `${leftOverlayCenterY}%`,
-    width: `${leftWidth}%`,
-    height: `${leftHeight}%`,
+    width: `${safeLeftWidth}%`,
+    height: `${safeLeftHeight}%`,
   };
 
   const rightBoxStyle = {
     left: `${rightOverlayCenterX}%`,
     top: `${rightOverlayCenterY}%`,
-    width: `${rightWidth}%`,
-    height: `${rightHeight}%`,
+    width: `${safeRightWidth}%`,
+    height: `${safeRightHeight}%`,
   };
 
   const popupBoxStyle = {
@@ -487,15 +497,15 @@ export default function DeviceLayoutEditor() {
   const leftBoxStageStyle = {
     left: `${previewBounds.left + (previewBounds.width * leftOverlayCenterX) / 100}%`,
     top: `${previewBounds.top + (previewBounds.height * leftOverlayCenterY) / 100}%`,
-    width: `${(previewBounds.width * leftWidth) / 100}%`,
-    height: `${(previewBounds.height * leftHeight) / 100}%`,
+    width: `${(previewBounds.width * safeLeftWidth) / 100}%`,
+    height: `${(previewBounds.height * safeLeftHeight) / 100}%`,
   };
 
   const rightBoxStageStyle = {
     left: `${previewBounds.left + (previewBounds.width * rightOverlayCenterX) / 100}%`,
     top: `${previewBounds.top + (previewBounds.height * rightOverlayCenterY) / 100}%`,
-    width: `${(previewBounds.width * rightWidth) / 100}%`,
-    height: `${(previewBounds.height * rightHeight) / 100}%`,
+    width: `${(previewBounds.width * safeRightWidth) / 100}%`,
+    height: `${(previewBounds.height * safeRightHeight) / 100}%`,
   };
 
   const guideSeamLeft = previewBounds.left + previewBounds.width * 0.5;
@@ -573,10 +583,10 @@ export default function DeviceLayoutEditor() {
 
     const onFrameLoad = () => {
       runMeasure();
-      timer = window.setInterval(runMeasure, 400);
       frame.contentWindow?.addEventListener("resize", runMeasure);
     };
 
+    timer = window.setInterval(runMeasure, 350);
     frame.addEventListener("load", onFrameLoad);
     runMeasure();
 
