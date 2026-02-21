@@ -613,9 +613,9 @@ export default function DeviceLayoutEditor() {
       // On phone profiles the book can be wider than the viewport. Keep that full ratio
       // so drag math stays aligned with the real rendered layout.
       left: clamp(((bookRect.left - heroRect.left) / heroRect.width) * 100, -250, 250),
-      top: clamp(((bookRect.top - heroRect.top) / heroRect.height) * 100, -100, 200),
+      top: clamp(((bookRect.top - heroRect.top) / heroRect.height) * 100, 0, 100),
       width: clamp((bookRect.width / heroRect.width) * 100, 20, 400),
-      height: clamp((bookRect.height / heroRect.height) * 100, 20, 250),
+      height: clamp((bookRect.height / heroRect.height) * 100, 20, 100),
     };
 
     setPreviewBounds((current) => {
