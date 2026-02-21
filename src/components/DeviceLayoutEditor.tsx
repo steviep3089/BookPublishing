@@ -79,15 +79,24 @@ function toVw(value: number) {
   return `${value.toFixed(2)}vw`;
 }
 
+const INSERT_X_MIN = -30;
+const INSERT_X_MAX = 130;
+const INSERT_TOP_MIN = -30;
+const INSERT_TOP_MAX = 130;
+const INSERT_WIDTH_MIN = 8;
+const INSERT_WIDTH_MAX = 90;
+const INSERT_HEIGHT_MIN = 8;
+const INSERT_HEIGHT_MAX = 80;
+
 function clampLeftCenter(center: number, width: number) {
-  const minCenter = width / 2;
-  const maxCenter = 50 - width / 2;
+  const minCenter = INSERT_X_MIN + width / 2;
+  const maxCenter = INSERT_X_MAX - width / 2;
   return clamp(center, minCenter, maxCenter);
 }
 
 function clampRightCenter(center: number, width: number) {
-  const minCenter = 50 + width / 2;
-  const maxCenter = 100 - width / 2;
+  const minCenter = INSERT_X_MIN + width / 2;
+  const maxCenter = INSERT_X_MAX - width / 2;
   return clamp(center, minCenter, maxCenter);
 }
 
@@ -100,11 +109,11 @@ function maxRightWidthForCenter(center: number) {
 }
 
 function maxLeftWidthForStart(start: number) {
-  return Math.max(8, 50 - start);
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
 }
 
 function maxRightWidthForStart(start: number) {
-  return Math.max(8, 100 - start);
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
 }
 
 function leftCenterFromVars(leftLeft: number, leftWidth: number) {
@@ -114,9 +123,6 @@ function leftCenterFromVars(leftLeft: number, leftWidth: number) {
 function rightCenterFromVars(rightLeft: number, rightWidth: number) {
   return 50 + rightLeft / 2 + rightWidth / 2;
 }
-
-const INSERT_TOP_MIN = 0;
-const INSERT_TOP_MAX = 88;
 
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
@@ -141,7 +147,7 @@ export default function DeviceLayoutEditor() {
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedTarget, setSelectedTarget] = useState<BoxTarget>("left");
   const [showGuides, setShowGuides] = useState(true);
-  const [snapToGuides, setSnapToGuides] = useState(true);
+  const [snapToGuides, setSnapToGuides] = useState(false);
   const [previewBounds, setPreviewBounds] = useState<PreviewBounds>({
     left: 0,
     top: 0,
@@ -212,13 +218,13 @@ export default function DeviceLayoutEditor() {
   const bgSize = parsePercent(vars["--login-bg-size"], isPhoneProfile ? 180 : 100);
   const bgPosY = parsePercent(vars["--login-bg-pos-y"], 2);
 
-  const safeLeftWidth = clamp(leftWidth, 8, 46);
-  const safeRightWidth = clamp(rightWidth, 8, 46);
-  const safeLeftHeight = clamp(leftHeight, 8, 46);
-  const safeRightHeight = clamp(rightHeight, 8, 46);
+  const safeLeftWidth = clamp(leftWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
+  const safeRightWidth = clamp(rightWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
+  const safeLeftHeight = clamp(leftHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
+  const safeRightHeight = clamp(rightHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
 
-  const safeLeftStart = clamp(leftLeft / 2, 0, 50 - safeLeftWidth);
-  const safeRightStart = clamp(50 + rightLeft / 2, 50, 100 - safeRightWidth);
+  const safeLeftStart = clamp(leftLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeLeftWidth);
+  const safeRightStart = clamp(50 + rightLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeRightWidth);
   const safeLeftTop = clamp(leftTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightTop = clamp(rightTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightModeTop = clamp(rightModeTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
@@ -368,15 +374,17 @@ export default function DeviceLayoutEditor() {
         return;
       }
 
-      if (activeDrag.target === "left-size") {
-        const leftStart = activeDrag.leftX / 2;
-        const maxWidth = maxLeftWidthForStart(leftStart);
-        setVarValues({
-          "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)),
-          "--login-left-height": toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)),
-        });
-        return;
-      }
+        if (activeDrag.target === "left-size") {
+          const leftStart = activeDrag.leftX / 2;
+          const maxWidth = maxLeftWidthForStart(leftStart);
+          setVarValues({
+            "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
+            "--login-left-height": toPercent(
+              clamp(activeDrag.leftH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)
+            ),
+          });
+          return;
+        }
 
       if (activeDrag.target === "right") {
         const newTop = snapValue(
@@ -395,15 +403,17 @@ export default function DeviceLayoutEditor() {
         return;
       }
 
-      if (activeDrag.target === "right-size") {
-        const rightStart = 50 + activeDrag.rightX / 2;
-        const maxWidth = maxRightWidthForStart(rightStart);
-        setVarValues({
-          "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)),
-          "--login-right-height": toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)),
-        });
-        return;
-      }
+        if (activeDrag.target === "right-size") {
+          const rightStart = 50 + activeDrag.rightX / 2;
+          const maxWidth = maxRightWidthForStart(rightStart);
+          setVarValues({
+            "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
+            "--login-right-height": toPercent(
+              clamp(activeDrag.rightH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)
+            ),
+          });
+          return;
+        }
 
       if (activeDrag.target === "popup") {
         const nextPopupLeft = snapValue(clamp(activeDrag.popupX + deltaXPercent, 18, 92), [25, 50, 75]);
@@ -734,13 +744,13 @@ export default function DeviceLayoutEditor() {
               <span>Left Insert Width (%)</span>
               <input
                 type="range"
-                min={8}
-                max={40}
+                min={INSERT_WIDTH_MIN}
+                max={INSERT_WIDTH_MAX}
                 value={Math.round(leftWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
                   const maxWidth = maxLeftWidthForStart(safeLeftStart);
-                  setVarValue("--login-left-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
+                  setVarValue("--login-left-width", `${clamp(candidate, INSERT_WIDTH_MIN, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
               />
@@ -750,8 +760,8 @@ export default function DeviceLayoutEditor() {
               <span>Left Insert Height (%)</span>
               <input
                 type="range"
-                min={8}
-                max={46}
+                min={INSERT_HEIGHT_MIN}
+                max={INSERT_HEIGHT_MAX}
                 value={Math.round(leftHeight)}
                 onChange={(event) => setVarValue("--login-left-height", `${event.target.value}%`)}
                 disabled={loading || saving}
@@ -762,13 +772,13 @@ export default function DeviceLayoutEditor() {
               <span>Right Insert Width (%)</span>
               <input
                 type="range"
-                min={8}
-                max={46}
+                min={INSERT_WIDTH_MIN}
+                max={INSERT_WIDTH_MAX}
                 value={Math.round(rightWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
                   const maxWidth = maxRightWidthForStart(safeRightStart);
-                  setVarValue("--login-right-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
+                  setVarValue("--login-right-width", `${clamp(candidate, INSERT_WIDTH_MIN, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
               />
@@ -778,8 +788,8 @@ export default function DeviceLayoutEditor() {
               <span>Right Insert Height (%)</span>
               <input
                 type="range"
-                min={8}
-                max={46}
+                min={INSERT_HEIGHT_MIN}
+                max={INSERT_HEIGHT_MAX}
                 value={Math.round(rightHeight)}
                 onChange={(event) => setVarValue("--login-right-height", `${event.target.value}%`)}
                 disabled={loading || saving}
