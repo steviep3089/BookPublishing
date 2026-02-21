@@ -230,6 +230,56 @@ export default function DeviceLayoutEditor() {
     }));
   }
 
+  useEffect(() => {
+    const nextValues: Record<string, string> = {};
+
+    if (Math.abs(leftLeft / 2 - safeLeftStart) > 0.01) {
+      nextValues["--login-left-left"] = toPercent(safeLeftStart * 2);
+    }
+    if (Math.abs(rightLeft / 2 - (safeRightStart - 50)) > 0.01) {
+      nextValues["--login-right-left"] = toPercent((safeRightStart - 50) * 2);
+    }
+    if (Math.abs(leftWidth - safeLeftWidth) > 0.01) {
+      nextValues["--login-left-width"] = toPercent(safeLeftWidth);
+    }
+    if (Math.abs(rightWidth - safeRightWidth) > 0.01) {
+      nextValues["--login-right-width"] = toPercent(safeRightWidth);
+    }
+    if (Math.abs(leftHeight - safeLeftHeight) > 0.01) {
+      nextValues["--login-left-height"] = toPercent(safeLeftHeight);
+    }
+    if (Math.abs(rightHeight - safeRightHeight) > 0.01) {
+      nextValues["--login-right-height"] = toPercent(safeRightHeight);
+    }
+    if (Math.abs(leftTop - safeLeftTop) > 0.01) {
+      nextValues["--login-left-top"] = toPercent(safeLeftTop);
+    }
+    if (Math.abs(rightTop - safeRightTop) > 0.01) {
+      nextValues["--login-right-top"] = toPercent(safeRightTop);
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      setVarValues(nextValues);
+    }
+  }, [
+    leftHeight,
+    leftLeft,
+    leftTop,
+    leftWidth,
+    rightHeight,
+    rightLeft,
+    rightTop,
+    rightWidth,
+    safeLeftHeight,
+    safeLeftStart,
+    safeLeftTop,
+    safeLeftWidth,
+    safeRightHeight,
+    safeRightStart,
+    safeRightTop,
+    safeRightWidth,
+  ]);
+
   function snapValue(value: number, guides: number[], threshold = 1.25) {
     if (!snapToGuides) return value;
     let best = value;
@@ -267,11 +317,11 @@ export default function DeviceLayoutEditor() {
       startClientY: event.clientY,
       stageWidth: activeWidth,
       stageHeight: activeHeight,
-      leftX: leftLeft,
+      leftX: safeLeftStart * 2,
       leftY: safeLeftTop,
       leftW: safeLeftWidth,
       leftH: safeLeftHeight,
-      rightX: rightLeft,
+      rightX: (safeRightStart - 50) * 2,
       rightY: safeRightTop,
       rightModeY: rightModeTop,
       rightW: safeRightWidth,
@@ -403,9 +453,9 @@ export default function DeviceLayoutEditor() {
       event.preventDefault();
 
       if (selectedTarget === "left") {
-        const center = clampLeftCenter(leftCenterFromVars(leftLeft, leftWidth) + dx, leftWidth);
-        const leftStart = center - leftWidth / 2;
-        const top = clamp(leftTop + dy, 10, 80);
+        const center = clampLeftCenter(leftCenterFromVars(safeLeftStart * 2, safeLeftWidth) + dx, safeLeftWidth);
+        const leftStart = center - safeLeftWidth / 2;
+        const top = clamp(safeLeftTop + dy, 10, 80);
         setVarValues({
           "--login-left-left": toPercent(leftStart * 2),
           "--login-left-top": toPercent(top),
@@ -414,9 +464,12 @@ export default function DeviceLayoutEditor() {
       }
 
       if (selectedTarget === "right") {
-        const top = clamp(rightTop + dy, 10, 80);
-        const center = clampRightCenter(rightCenterFromVars(rightLeft, rightWidth) + dx, rightWidth);
-        const rightStart = center - rightWidth / 2;
+        const top = clamp(safeRightTop + dy, 10, 80);
+        const center = clampRightCenter(
+          rightCenterFromVars((safeRightStart - 50) * 2, safeRightWidth) + dx,
+          safeRightWidth
+        );
+        const rightStart = center - safeRightWidth / 2;
         setVarValues({
           "--login-right-left": toPercent((rightStart - 50) * 2),
           "--login-right-top": toPercent(top),
@@ -448,6 +501,12 @@ export default function DeviceLayoutEditor() {
     rightTop,
     rightWidth,
     saving,
+    safeLeftStart,
+    safeLeftTop,
+    safeLeftWidth,
+    safeRightStart,
+    safeRightTop,
+    safeRightWidth,
     selectedTarget,
   ]);
 
