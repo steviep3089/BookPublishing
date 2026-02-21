@@ -99,6 +99,14 @@ function maxRightWidthForCenter(center: number) {
   return Math.max(8, Math.min((center - 50) * 2, (100 - center) * 2));
 }
 
+function leftCenterFromVars(leftLeft: number, leftWidth: number) {
+  return leftLeft / 2 + leftWidth / 2;
+}
+
+function rightCenterFromVars(rightLeft: number, rightWidth: number) {
+  return 50 + rightLeft / 2 + rightWidth / 2;
+}
+
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
     case "iphone-portrait":
@@ -268,18 +276,20 @@ export default function DeviceLayoutEditor() {
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
-        const nextCenterRaw = clampLeftCenter(activeDrag.leftX / 2 + deltaXPercent, activeDrag.leftW);
+        const currentCenter = leftCenterFromVars(activeDrag.leftX, activeDrag.leftW);
+        const nextCenterRaw = clampLeftCenter(currentCenter + deltaXPercent, activeDrag.leftW);
         const nextCenter = clampLeftCenter(snapValue(nextCenterRaw, [12.5, 25, 37.5]), activeDrag.leftW);
+        const nextLeftStart = nextCenter - activeDrag.leftW / 2;
         const nextTop = snapValue(clamp(activeDrag.leftY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
         setVarValues({
-          "--login-left-left": toPercent(nextCenter * 2),
+          "--login-left-left": toPercent(nextLeftStart * 2),
           "--login-left-top": toPercent(nextTop),
         });
         return;
       }
 
       if (activeDrag.target === "left-size") {
-        const leftCenter = activeDrag.leftX / 2;
+        const leftCenter = leftCenterFromVars(activeDrag.leftX, activeDrag.leftW);
         const maxWidth = maxLeftWidthForCenter(leftCenter);
         setVarValues({
           "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, maxWidth)),
@@ -291,10 +301,12 @@ export default function DeviceLayoutEditor() {
       if (activeDrag.target === "right") {
         const newTop = snapValue(clamp(activeDrag.rightY + deltaYPercent, 10, 80), [20, 30, 40, 50, 60, 70]);
         const topDelta = newTop - activeDrag.rightY;
-        const nextCenterRaw = clampRightCenter(50 + activeDrag.rightX / 2 + deltaXPercent, activeDrag.rightW);
+        const currentCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
+        const nextCenterRaw = clampRightCenter(currentCenter + deltaXPercent, activeDrag.rightW);
         const nextCenter = clampRightCenter(snapValue(nextCenterRaw, [62.5, 75, 87.5]), activeDrag.rightW);
+        const nextRightStart = nextCenter - activeDrag.rightW / 2;
         setVarValues({
-          "--login-right-left": toPercent((nextCenter - 50) * 2),
+          "--login-right-left": toPercent((nextRightStart - 50) * 2),
           "--login-right-top": toPercent(newTop),
           "--login-right-mode-top": toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)),
         });
@@ -302,7 +314,7 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "right-size") {
-        const rightCenter = 50 + activeDrag.rightX / 2;
+        const rightCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
         const maxWidth = maxRightWidthForCenter(rightCenter);
         setVarValues({
           "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, maxWidth)),
@@ -373,10 +385,11 @@ export default function DeviceLayoutEditor() {
       event.preventDefault();
 
       if (selectedTarget === "left") {
-        const center = clampLeftCenter(leftLeft / 2 + dx, leftWidth);
+        const center = clampLeftCenter(leftCenterFromVars(leftLeft, leftWidth) + dx, leftWidth);
+        const leftStart = center - leftWidth / 2;
         const top = clamp(leftTop + dy, 10, 80);
         setVarValues({
-          "--login-left-left": toPercent(center * 2),
+          "--login-left-left": toPercent(leftStart * 2),
           "--login-left-top": toPercent(top),
         });
         return;
@@ -384,9 +397,10 @@ export default function DeviceLayoutEditor() {
 
       if (selectedTarget === "right") {
         const top = clamp(rightTop + dy, 10, 80);
-        const center = clampRightCenter(50 + rightLeft / 2 + dx, rightWidth);
+        const center = clampRightCenter(rightCenterFromVars(rightLeft, rightWidth) + dx, rightWidth);
+        const rightStart = center - rightWidth / 2;
         setVarValues({
-          "--login-right-left": toPercent((center - 50) * 2),
+          "--login-right-left": toPercent((rightStart - 50) * 2),
           "--login-right-top": toPercent(top),
           "--login-right-mode-top": toPercent(clamp(rightModeTop + dy, 10, 80)),
         });
@@ -630,7 +644,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(leftWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxLeftWidthForCenter(leftLeft / 2);
+                  const maxWidth = maxLeftWidthForCenter(leftCenterFromVars(leftLeft, leftWidth));
                   setVarValue("--login-left-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
@@ -658,7 +672,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(rightWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxRightWidthForCenter(50 + rightLeft / 2);
+                  const maxWidth = maxRightWidthForCenter(rightCenterFromVars(rightLeft, rightWidth));
                   setVarValue("--login-right-width", `${clamp(candidate, 8, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
