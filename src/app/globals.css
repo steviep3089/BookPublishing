@@ -168,6 +168,52 @@ body {
   margin: 0;
 }
 
+.login-left-insert,
+.login-right-insert {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: inherit;
+}
+
+.login-left-insert .typewriter,
+.login-right-insert .login-subtitle {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.login-hero[data-device-profile="iphone-portrait"] .login-left-insert,
+.login-hero[data-device-profile="iphone-landscape"] .login-left-insert,
+.login-hero[data-device-profile="ipad-portrait"] .login-left-insert,
+.login-hero[data-device-profile="ipad-landscape"] .login-left-insert {
+  width: calc(var(--login-left-width, 24%) * 2);
+  max-height: var(--login-left-height, 20%);
+  overflow: hidden;
+}
+
+.login-hero[data-device-profile="iphone-portrait"] .login-right-insert,
+.login-hero[data-device-profile="iphone-landscape"] .login-right-insert,
+.login-hero[data-device-profile="ipad-portrait"] .login-right-insert,
+.login-hero[data-device-profile="ipad-landscape"] .login-right-insert {
+  width: calc(var(--login-right-width, 26%) * 2);
+  max-height: var(--login-right-height, 18%);
+  overflow: hidden;
+}
+
+.login-hero[data-device-profile="iphone-portrait"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile="iphone-landscape"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile="ipad-portrait"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile="ipad-landscape"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile="iphone-portrait"] .login-right-insert .auth-form,
+.login-hero[data-device-profile="iphone-landscape"] .login-right-insert .auth-form,
+.login-hero[data-device-profile="ipad-portrait"] .login-right-insert .auth-form,
+.login-hero[data-device-profile="ipad-landscape"] .login-right-insert .auth-form {
+  width: 100%;
+  max-width: 100%;
+}
+
 .login-mode-cta {
   margin-top: -0.5vw !important;
 }
@@ -1891,6 +1937,10 @@ body {
   border: 1px solid rgba(255, 247, 233, 0.92);
   background: rgba(236, 214, 180, 0.95);
   cursor: ew-resize;
+}
+
+.device-drag-handle-size {
+  cursor: nwse-resize;
 }
 
 .device-layout-editor input[type="range"] {

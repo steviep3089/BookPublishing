@@ -382,230 +382,239 @@ export default function LoginContent() {
     >
       <section className="login-book">
         <div className="login-page login-page-left">
-          <p className="login-kicker">Reading Club</p>
-          <p className={`typewriter ink-text ${caveat.className}`} aria-live="polite">
-            {typedText}
-          </p>
+          <div className="login-left-insert">
+            <p className="login-kicker">Reading Club</p>
+            <p className={`typewriter ink-text ${caveat.className}`} aria-live="polite">
+              {typedText}
+            </p>
+          </div>
         </div>
 
         <div className="login-page login-page-right login-page-right-mode">
-          <p className="login-kicker">
-            {isResetMode ? "Reset password" : effectiveAuthView === "signin" ? "Welcome back" : "Join the story"}
-          </p>
-          {!actionReady ? (
-            <p className={`login-subtitle ink-text ${caveat.className}`}>
-              {typedAction}
+          <div className="login-right-insert">
+            <p className="login-kicker">
+              {isResetMode ? "Reset password" : effectiveAuthView === "signin" ? "Welcome back" : "Join the story"}
             </p>
-          ) : (
-            <>
-              <div className={`auth-panel ${caveat.className}`}>
-                <div className="auth-heading-row">
-                  {!isResetMode && (
-                    <div className="auth-switch" role="tablist" aria-label="Authentication mode">
-                      <button
-                        type="button"
-                        className={`auth-switch-btn ${effectiveAuthView === "signin" ? "active" : ""}`}
-                        onClick={() => {
-                          resetFeedback();
-                          setAuthView("signin");
-                          if (isPhoneLayout) setShowPhoneForm(true);
-                        }}
-                        disabled={busy}
-                      >
-                        Sign in
-                      </button>
-                      <button
-                        type="button"
-                        className={`auth-switch-btn ${effectiveAuthView === "signup" ? "active" : ""}`}
-                        onClick={() => {
-                          resetFeedback();
-                          setAuthView("signup");
-                          if (isPhoneLayout) setShowPhoneForm(true);
-                        }}
-                        disabled={busy}
-                      >
-                        Create account
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
-                  {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
-                  <form className="auth-form" onSubmit={handleResetPassword}>
-                    <label className="auth-field">
-                      <span>New password</span>
-                      <div className="auth-password-row">
-                        <input
-                          type={showResetPassword ? "text" : "password"}
-                          value={resetPassword}
-                          onChange={(event) => setResetPassword(event.target.value)}
-                          autoComplete="new-password"
-                          required
-                        />
+            {!actionReady ? (
+              <p className={`login-subtitle ink-text ${caveat.className}`}>
+                {typedAction}
+              </p>
+            ) : (
+              <>
+                <div className={`auth-panel ${caveat.className}`}>
+                  <div className="auth-heading-row">
+                    {!isResetMode && (
+                      <div className="auth-switch" role="tablist" aria-label="Authentication mode">
                         <button
                           type="button"
-                          className="auth-toggle-password"
-                          onClick={() => setShowResetPassword((current) => !current)}
+                          className={`auth-switch-btn ${effectiveAuthView === "signin" ? "active" : ""}`}
+                          onClick={() => {
+                            resetFeedback();
+                            setAuthView("signin");
+                            if (isPhoneLayout) setShowPhoneForm(true);
+                          }}
+                          disabled={busy}
                         >
-                          {showResetPassword ? "Hide" : "Show"}
+                          Sign in
                         </button>
-                      </div>
-                    </label>
-
-                    <label className="auth-field">
-                      <span>Confirm new password</span>
-                      <div className="auth-password-row">
-                        <input
-                          type={showResetConfirmPassword ? "text" : "password"}
-                          value={resetConfirmPassword}
-                          onChange={(event) => setResetConfirmPassword(event.target.value)}
-                          autoComplete="new-password"
-                          required
-                        />
                         <button
                           type="button"
-                          className="auth-toggle-password"
-                          onClick={() => setShowResetConfirmPassword((current) => !current)}
+                          className={`auth-switch-btn ${effectiveAuthView === "signup" ? "active" : ""}`}
+                          onClick={() => {
+                            resetFeedback();
+                            setAuthView("signup");
+                            if (isPhoneLayout) setShowPhoneForm(true);
+                          }}
+                          disabled={busy}
                         >
-                          {showResetConfirmPassword ? "Hide" : "Show"}
+                          Create account
                         </button>
                       </div>
-                    </label>
+                    )}
+                  </div>
 
-                    <button type="submit" className="auth-submit" disabled={busy}>
-                      {busy ? "Updating..." : "Update password"}
-                    </button>
-                  </form>
-                ) : effectiveAuthView === "signin" ? (
-                  <form className="auth-form" onSubmit={handleSignIn}>
-                    <label className="auth-field">
-                      <span>Email</span>
-                      <input
-                        type="email"
-                        value={signInEmail}
-                        onChange={(event) => setSignInEmail(event.target.value)}
-                        autoComplete="email"
-                        required
-                      />
-                    </label>
+                  <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
+                    {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
+                    <form className="auth-form" onSubmit={handleResetPassword}>
+                      <label className="auth-field">
+                        <span>New password</span>
+                        <div className="auth-password-row">
+                          <input
+                            type={showResetPassword ? "text" : "password"}
+                            value={resetPassword}
+                            onChange={(event) => setResetPassword(event.target.value)}
+                            autoComplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="auth-toggle-password"
+                            onClick={() => setShowResetPassword((current) => !current)}
+                          >
+                            {showResetPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </label>
 
-                    <label className="auth-field">
-                      <span>Password</span>
-                      <div className="auth-password-row">
-                        <input
-                          type={showSignInPassword ? "text" : "password"}
-                          value={signInPassword}
-                          onChange={(event) => setSignInPassword(event.target.value)}
-                          autoComplete="current-password"
-                          required
-                        />
-                        <button
-                          type="button"
-                          className="auth-toggle-password"
-                          onClick={() => setShowSignInPassword((current) => !current)}
-                        >
-                          {showSignInPassword ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                    </label>
+                      <label className="auth-field">
+                        <span>Confirm new password</span>
+                        <div className="auth-password-row">
+                          <input
+                            type={showResetConfirmPassword ? "text" : "password"}
+                            value={resetConfirmPassword}
+                            onChange={(event) => setResetConfirmPassword(event.target.value)}
+                            autoComplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="auth-toggle-password"
+                            onClick={() => setShowResetConfirmPassword((current) => !current)}
+                          >
+                            {showResetConfirmPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </label>
 
-                    <div className="auth-actions">
                       <button type="submit" className="auth-submit" disabled={busy}>
-                        {busy ? "Signing in..." : "Sign in"}
+                        {busy ? "Updating..." : "Update password"}
                       </button>
-                      <button type="button" className="auth-link" onClick={handleForgotPassword} disabled={busy}>
-                        Forgot password?
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <form className="auth-form" onSubmit={handleSignUp}>
-                    <label className="auth-field">
-                      <span>Username</span>
-                      <input
-                        type="text"
-                        value={signUpUsername}
-                        onChange={(event) => setSignUpUsername(event.target.value)}
-                        autoComplete="username"
-                        required
-                      />
-                    </label>
-
-                    <label className="auth-field">
-                      <span>Email</span>
-                      <input
-                        type="email"
-                        value={signUpEmail}
-                        onChange={(event) => setSignUpEmail(event.target.value)}
-                        autoComplete="email"
-                        required
-                      />
-                    </label>
-
-                    <label className="auth-field">
-                      <span>Password</span>
-                      <div className="auth-password-row">
+                    </form>
+                  ) : effectiveAuthView === "signin" ? (
+                    <form className="auth-form" onSubmit={handleSignIn}>
+                      <label className="auth-field">
+                        <span>Email</span>
                         <input
-                          type={showSignUpPassword ? "text" : "password"}
-                          value={signUpPassword}
-                          onChange={(event) => setSignUpPassword(event.target.value)}
-                          autoComplete="new-password"
+                          type="email"
+                          value={signInEmail}
+                          onChange={(event) => setSignInEmail(event.target.value)}
+                          autoComplete="email"
                           required
                         />
+                      </label>
+
+                      <label className="auth-field">
+                        <span>Password</span>
+                        <div className="auth-password-row">
+                          <input
+                            type={showSignInPassword ? "text" : "password"}
+                            value={signInPassword}
+                            onChange={(event) => setSignInPassword(event.target.value)}
+                            autoComplete="current-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="auth-toggle-password"
+                            onClick={() => setShowSignInPassword((current) => !current)}
+                          >
+                            {showSignInPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </label>
+
+                      <div className="auth-actions">
+                        <button type="submit" className="auth-submit" disabled={busy}>
+                          {busy ? "Signing in..." : "Sign in"}
+                        </button>
                         <button
                           type="button"
-                          className="auth-toggle-password"
-                          onClick={() => setShowSignUpPassword((current) => !current)}
+                          className="auth-link"
+                          onClick={handleForgotPassword}
+                          disabled={busy}
                         >
-                          {showSignUpPassword ? "Hide" : "Show"}
+                          Forgot password?
                         </button>
                       </div>
-                    </label>
-
-                    <label className="auth-field">
-                      <span>Confirm password</span>
-                      <div className="auth-password-row">
+                    </form>
+                  ) : (
+                    <form className="auth-form" onSubmit={handleSignUp}>
+                      <label className="auth-field">
+                        <span>Username</span>
                         <input
-                          type={showSignUpConfirmPassword ? "text" : "password"}
-                          value={signUpConfirmPassword}
-                          onChange={(event) => setSignUpConfirmPassword(event.target.value)}
-                          autoComplete="new-password"
+                          type="text"
+                          value={signUpUsername}
+                          onChange={(event) => setSignUpUsername(event.target.value)}
+                          autoComplete="username"
                           required
                         />
-                        <button
-                          type="button"
-                          className="auth-toggle-password"
-                          onClick={() => setShowSignUpConfirmPassword((current) => !current)}
-                        >
-                          {showSignUpConfirmPassword ? "Hide" : "Show"}
-                        </button>
-                      </div>
-                    </label>
+                      </label>
 
-                    <button type="submit" className="auth-submit" disabled={busy}>
-                      {busy ? "Creating..." : "Create user"}
-                    </button>
-                  </form>
-                  ))}
+                      <label className="auth-field">
+                        <span>Email</span>
+                        <input
+                          type="email"
+                          value={signUpEmail}
+                          onChange={(event) => setSignUpEmail(event.target.value)}
+                          autoComplete="email"
+                          required
+                        />
+                      </label>
 
-                  {isPhoneLayout && !isResetMode && showPhoneForm && (
-                    <button
-                      type="button"
-                      className="auth-mobile-close"
-                      onClick={() => setShowPhoneForm(false)}
-                      disabled={busy}
-                    >
-                      Close
-                    </button>
-                  )}
+                      <label className="auth-field">
+                        <span>Password</span>
+                        <div className="auth-password-row">
+                          <input
+                            type={showSignUpPassword ? "text" : "password"}
+                            value={signUpPassword}
+                            onChange={(event) => setSignUpPassword(event.target.value)}
+                            autoComplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="auth-toggle-password"
+                            onClick={() => setShowSignUpPassword((current) => !current)}
+                          >
+                            {showSignUpPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </label>
+
+                      <label className="auth-field">
+                        <span>Confirm password</span>
+                        <div className="auth-password-row">
+                          <input
+                            type={showSignUpConfirmPassword ? "text" : "password"}
+                            value={signUpConfirmPassword}
+                            onChange={(event) => setSignUpConfirmPassword(event.target.value)}
+                            autoComplete="new-password"
+                            required
+                          />
+                          <button
+                            type="button"
+                            className="auth-toggle-password"
+                            onClick={() => setShowSignUpConfirmPassword((current) => !current)}
+                          >
+                            {showSignUpConfirmPassword ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </label>
+
+                      <button type="submit" className="auth-submit" disabled={busy}>
+                        {busy ? "Creating..." : "Create user"}
+                      </button>
+                    </form>
+                    ))}
+
+                    {isPhoneLayout && !isResetMode && showPhoneForm && (
+                      <button
+                        type="button"
+                        className="auth-mobile-close"
+                        onClick={() => setShowPhoneForm(false)}
+                        disabled={busy}
+                      >
+                        Close
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {notice && <p className="login-note">{notice}</p>}
-          {(err || authError) && <p className="login-error">{err || authError}</p>}
+            {notice && <p className="login-note">{notice}</p>}
+            {(err || authError) && <p className="login-error">{err || authError}</p>}
+          </div>
         </div>
       </section>
     </main>

@@ -15,7 +15,7 @@ type ApiResult = {
   error?: string;
 };
 
-type DragTarget = "left" | "right" | "popup" | "popup-size";
+type DragTarget = "left" | "left-size" | "right" | "right-size" | "popup" | "popup-size";
 
 type DragState = {
   target: DragTarget;
@@ -26,9 +26,13 @@ type DragState = {
   stageHeight: number;
   leftX: number;
   leftY: number;
+  leftW: number;
+  leftH: number;
   rightX: number;
   rightY: number;
   rightModeY: number;
+  rightW: number;
+  rightH: number;
   popupX: number;
   popupY: number;
   popupW: number;
@@ -141,6 +145,10 @@ export default function DeviceLayoutEditor() {
   const rightLeft = parsePercent(vars["--login-right-left"], isPhoneProfile ? 10 : 10);
   const rightTop = parsePercent(vars["--login-right-top"], isPhoneProfile ? 40 : 34);
   const rightModeTop = parsePercent(vars["--login-right-mode-top"], isPhoneProfile ? 37 : 30);
+  const leftWidth = parsePercent(vars["--login-left-width"], 24);
+  const leftHeight = parsePercent(vars["--login-left-height"], 20);
+  const rightWidth = parsePercent(vars["--login-right-width"], 26);
+  const rightHeight = parsePercent(vars["--login-right-height"], 18);
   const popupLeft = parsePercent(vars["--login-popup-left"], 70);
   const popupTop = parsePercent(vars["--login-popup-top"], 63);
   const popupWidth = parseVw(vars["--login-popup-width"], 82);
@@ -165,9 +173,13 @@ export default function DeviceLayoutEditor() {
       stageHeight: rect.height,
       leftX: leftLeft,
       leftY: leftTop,
+      leftW: leftWidth,
+      leftH: leftHeight,
       rightX: rightLeft,
       rightY: rightTop,
       rightModeY: rightModeTop,
+      rightW: rightWidth,
+      rightH: rightHeight,
       popupX: popupLeft,
       popupY: popupTop,
       popupW: popupWidth,
@@ -189,12 +201,24 @@ export default function DeviceLayoutEditor() {
         return;
       }
 
+      if (activeDrag.target === "left-size") {
+        setVarValue("--login-left-width", toPercent(clamp(activeDrag.leftW + deltaXPercent, 8, 40)));
+        setVarValue("--login-left-height", toPercent(clamp(activeDrag.leftH + deltaYPercent, 8, 46)));
+        return;
+      }
+
       if (activeDrag.target === "right") {
         const newTop = clamp(activeDrag.rightY + deltaYPercent, 10, 80);
         const topDelta = newTop - activeDrag.rightY;
         setVarValue("--login-right-left", toPercent(clamp(activeDrag.rightX + deltaXPercent * 2, 0, 60)));
         setVarValue("--login-right-top", toPercent(newTop));
         setVarValue("--login-right-mode-top", toPercent(clamp(activeDrag.rightModeY + topDelta, 10, 80)));
+        return;
+      }
+
+      if (activeDrag.target === "right-size") {
+        setVarValue("--login-right-width", toPercent(clamp(activeDrag.rightW + deltaXPercent, 8, 46)));
+        setVarValue("--login-right-height", toPercent(clamp(activeDrag.rightH + deltaYPercent, 8, 46)));
         return;
       }
 
@@ -250,15 +274,15 @@ export default function DeviceLayoutEditor() {
   const leftBoxStyle = {
     left: `${leftLeft / 2}%`,
     top: `${leftTop}%`,
-    width: "24%",
-    height: "20%",
+    width: `${leftWidth}%`,
+    height: `${leftHeight}%`,
   };
 
   const rightBoxStyle = {
     left: `${50 + rightLeft / 2}%`,
     top: `${rightTop}%`,
-    width: "26%",
-    height: "18%",
+    width: `${rightWidth}%`,
+    height: `${rightHeight}%`,
   };
 
   const popupBoxStyle = {
@@ -290,7 +314,7 @@ export default function DeviceLayoutEditor() {
     <section className="device-layout-shell">
       <div className="bookcase-admin-card device-layout-editor">
         <h1>Device Layout Setup</h1>
-        <p>Use the live preview on the right. Drag text/panel boxes and resize popup width from the handle.</p>
+        <p>Use the live preview on the right. Drag left/right inserts, resize them from the corner, and drag/resize popup form.</p>
 
         <div className="bookcase-editor-label">
           <span>Profile</span>
@@ -389,6 +413,13 @@ export default function DeviceLayoutEditor() {
             onPointerDown={(event) => startDrag(event, "left")}
           >
             Left Page Text
+            <span
+              className="device-drag-handle device-drag-handle-size"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                startDrag(event, "left-size");
+              }}
+            />
           </button>
           <button
             type="button"
@@ -397,6 +428,13 @@ export default function DeviceLayoutEditor() {
             onPointerDown={(event) => startDrag(event, "right")}
           >
             Right Page Panel
+            <span
+              className="device-drag-handle device-drag-handle-size"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                startDrag(event, "right-size");
+              }}
+            />
           </button>
 
           {isPhoneProfile && (
