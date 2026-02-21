@@ -194,17 +194,6 @@ export default function LoginContent() {
   }, [isPhoneLayout, isResetMode]);
 
   useEffect(() => {
-    if (deviceProfile !== "iphone-portrait" || !heroRef.current) return;
-    const viewport = heroRef.current;
-    const center = () => {
-      viewport.scrollLeft = Math.max(0, (viewport.scrollWidth - viewport.clientWidth) / 2);
-    };
-    center();
-    const raf = window.requestAnimationFrame(center);
-    return () => window.cancelAnimationFrame(raf);
-  }, [deviceProfile, showPhoneForm, actionReady]);
-
-  useEffect(() => {
     if (isPreviewMode) {
       setTypedText(leftText);
       setTypedAction(rightIntroText);
