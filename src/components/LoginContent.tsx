@@ -51,9 +51,6 @@ export default function LoginContent() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [typedText, setTypedText] = useState("");
-  const [typedAction, setTypedAction] = useState("");
-  const [actionReady, setActionReady] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfileKey | null>(null);
   const [deviceVars, setDeviceVars] = useState<Record<string, string>>({});
   const [previewVars, setPreviewVars] = useState<Record<string, string>>({});
@@ -192,49 +189,6 @@ export default function LoginContent() {
     }
     setShowPhoneForm(false);
   }, [isPhoneLayout, isResetMode]);
-
-  useEffect(() => {
-    if (isPreviewMode) {
-      setTypedText(leftText);
-      setTypedAction(rightIntroText);
-      setActionReady(true);
-      return;
-    }
-
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (media.matches) {
-      const timer = window.setTimeout(() => {
-        setTypedText(leftText);
-        setTypedAction(rightIntroText);
-        setActionReady(true);
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
-
-    let leftIndex = 0;
-    let rightIndex = 0;
-    let phase: "left" | "right" = "left";
-
-    const timer = setInterval(() => {
-      if (phase === "left") {
-        leftIndex += 1;
-        setTypedText(leftText.slice(0, leftIndex));
-        if (leftIndex >= leftText.length) {
-          phase = "right";
-        }
-        return;
-      }
-
-      rightIndex += 1;
-      setTypedAction(rightIntroText.slice(0, rightIndex));
-      if (rightIndex >= rightIntroText.length) {
-        setActionReady(true);
-        clearInterval(timer);
-      }
-    }, 18);
-
-    return () => clearInterval(timer);
-  }, [isPreviewMode, leftText, rightIntroText]);
 
   useEffect(() => {
     if (!notice) return;
@@ -387,7 +341,7 @@ export default function LoginContent() {
           <div className="login-left-insert">
             <p className="login-kicker">Reading Club</p>
             <p className={`typewriter ink-text ${caveat.className}`} aria-live="polite">
-              {typedText}
+              {leftText}
             </p>
           </div>
         </div>
@@ -395,48 +349,46 @@ export default function LoginContent() {
         <div className="login-page login-page-right login-page-right-mode">
           <div className="login-right-insert">
             <p className="login-kicker">
-              {isResetMode ? "Reset password" : effectiveAuthView === "signin" ? "Welcome back" : "Join the story"}
+              {isResetMode ? "Reset password" : "Reading Club"}
             </p>
-            {!actionReady ? (
-              <p className={`login-subtitle ink-text ${caveat.className}`}>
-                {typedAction}
-              </p>
-            ) : (
-              <>
-                <div className={`auth-panel ${caveat.className}`}>
-                  <div className="auth-heading-row">
-                    {!isResetMode && (
-                      <div className="auth-switch" role="tablist" aria-label="Authentication mode">
-                        <button
-                          type="button"
-                          className={`auth-switch-btn ${effectiveAuthView === "signin" ? "active" : ""}`}
-                          onClick={() => {
-                            resetFeedback();
-                            setAuthView("signin");
-                            if (isPhoneLayout) setShowPhoneForm(true);
-                          }}
-                          disabled={busy}
-                        >
-                          Sign in
-                        </button>
-                        <button
-                          type="button"
-                          className={`auth-switch-btn ${effectiveAuthView === "signup" ? "active" : ""}`}
-                          onClick={() => {
-                            resetFeedback();
-                            setAuthView("signup");
-                            if (isPhoneLayout) setShowPhoneForm(true);
-                          }}
-                          disabled={busy}
-                        >
-                          Create account
-                        </button>
-                      </div>
-                    )}
-                  </div>
+            <p className={`login-subtitle ink-text ${caveat.className}`}>
+              {rightIntroText}
+            </p>
+            <>
+              <div className={`auth-panel ${caveat.className}`}>
+                <div className="auth-heading-row">
+                  {!isResetMode && (
+                    <div className="auth-switch" role="tablist" aria-label="Authentication mode">
+                      <button
+                        type="button"
+                        className={`auth-switch-btn ${effectiveAuthView === "signin" ? "active" : ""}`}
+                        onClick={() => {
+                          resetFeedback();
+                          setAuthView("signin");
+                          if (isPhoneLayout) setShowPhoneForm(true);
+                        }}
+                        disabled={busy}
+                      >
+                        Sign in
+                      </button>
+                      <button
+                        type="button"
+                        className={`auth-switch-btn ${effectiveAuthView === "signup" ? "active" : ""}`}
+                        onClick={() => {
+                          resetFeedback();
+                          setAuthView("signup");
+                          if (isPhoneLayout) setShowPhoneForm(true);
+                        }}
+                        disabled={busy}
+                      >
+                        Create account
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                  <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
-                    {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
+                <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${(showPhoneForm || isResetMode) ? "open" : ""}`}>
+                  {(showPhoneForm || !isPhoneLayout || isResetMode) && (isResetMode ? (
                     <form className="auth-form" onSubmit={handleResetPassword}>
                       <label className="auth-field">
                         <span>New password</span>
@@ -599,20 +551,19 @@ export default function LoginContent() {
                     </form>
                     ))}
 
-                    {isPhoneLayout && !isResetMode && showPhoneForm && (
-                      <button
-                        type="button"
-                        className="auth-mobile-close"
-                        onClick={() => setShowPhoneForm(false)}
-                        disabled={busy}
-                      >
-                        Close
-                      </button>
-                    )}
-                  </div>
+                  {isPhoneLayout && !isResetMode && showPhoneForm && (
+                    <button
+                      type="button"
+                      className="auth-mobile-close"
+                      onClick={() => setShowPhoneForm(false)}
+                      disabled={busy}
+                    >
+                      Close
+                    </button>
+                  )}
                 </div>
-              </>
-            )}
+              </div>
+            </>
 
             {notice && <p className="login-note">{notice}</p>}
             {(err || authError) && <p className="login-error">{err || authError}</p>}
