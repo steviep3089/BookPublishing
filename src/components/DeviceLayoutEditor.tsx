@@ -599,11 +599,11 @@ export default function DeviceLayoutEditor() {
     height: `${(previewBounds.height * safeRightHeight) / 100}%`,
   };
 
-  const guideBookLeft = previewBounds.left;
-  const guideBookRight = previewBounds.left + previewBounds.width;
+  const guideViewportLeft = 0;
+  const guideViewportRight = 100;
   const guideSeamLeft = previewBounds.left + previewBounds.width * 0.5;
-  const guideBookTop = previewBounds.top;
-  const guideBookBottom = previewBounds.top + previewBounds.height;
+  const guideViewportTop = 0;
+  const guideViewportBottom = 100;
 
   function measurePreviewBounds() {
     const frame = previewFrameRef.current;
@@ -873,16 +873,16 @@ export default function DeviceLayoutEditor() {
             onLoad={postPreviewVars}
           />
           <div className={`device-layout-guides ${showGuides ? "" : "device-layout-guides-hidden"}`} aria-hidden="true">
-            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideBookLeft}%` }} />
-            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideBookRight}%` }} />
+            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideViewportLeft}%` }} />
+            <span className="device-layout-guide device-layout-guide-book-edge" style={{ left: `${guideViewportRight}%` }} />
             <span className="device-layout-guide device-layout-guide-seam" style={{ left: `${guideSeamLeft}%` }} />
             <span
               className="device-layout-guide-horizontal device-layout-guide-book-edge"
-              style={{ top: `${guideBookTop}%`, left: `${guideBookLeft}%`, width: `${previewBounds.width}%` }}
+              style={{ top: `${guideViewportTop}%`, left: `${guideViewportLeft}%`, width: "100%" }}
             />
             <span
               className="device-layout-guide-horizontal device-layout-guide-book-edge"
-              style={{ top: `${guideBookBottom}%`, left: `${guideBookLeft}%`, width: `${previewBounds.width}%` }}
+              style={{ top: `${guideViewportBottom}%`, left: `${guideViewportLeft}%`, width: "100%" }}
             />
           </div>
           <button
