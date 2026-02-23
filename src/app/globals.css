@@ -190,36 +190,201 @@ body {
   word-break: break-word;
 }
 
-.login-hero[data-device-profile="iphone-portrait"] .login-left-insert,
-.login-hero[data-device-profile="iphone-landscape"] .login-left-insert,
+.login-hero[data-device-profile^="iphone-portrait"] .login-left-insert,
+.login-hero[data-device-profile^="iphone-landscape"] .login-left-insert,
+.login-hero[data-device-profile="desktop"] .login-left-insert,
 .login-hero[data-device-profile="ipad-portrait"] .login-left-insert,
 .login-hero[data-device-profile="ipad-landscape"] .login-left-insert {
   width: calc(var(--login-left-width, 24%) * 2);
-  height: var(--login-left-height, 20%);
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: max(var(--login-left-height, 20%), 10%);
+  min-height: 3.4rem;
+  overflow: hidden;
 }
 
-.login-hero[data-device-profile="iphone-portrait"] .login-right-insert,
-.login-hero[data-device-profile="iphone-landscape"] .login-right-insert,
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert,
+.login-hero[data-device-profile="desktop"] .login-right-insert,
 .login-hero[data-device-profile="ipad-portrait"] .login-right-insert,
 .login-hero[data-device-profile="ipad-landscape"] .login-right-insert {
   width: calc(var(--login-right-width, 26%) * 2);
-  height: var(--login-right-height, 18%);
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: max(var(--login-right-height, 18%), 10%);
+  min-height: 3.4rem;
+  overflow: hidden;
 }
 
-.login-hero[data-device-profile="iphone-portrait"] .login-right-insert .auth-panel,
-.login-hero[data-device-profile="iphone-landscape"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile^="iphone-portrait"] .login-left-insert,
+.login-hero[data-device-profile^="iphone-landscape"] .login-left-insert,
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert {
+  container-type: inline-size;
+}
+
+.login-hero[data-device-profile="desktop"] .login-page {
+  height: 100%;
+}
+
+.login-hero[data-device-profile="desktop"] .login-page-left .login-left-insert,
+.login-hero[data-device-profile="desktop"] .login-page-right .login-right-insert {
+  position: absolute;
+  overflow: hidden;
+}
+
+.login-hero[data-device-profile="desktop"] .login-page-left .login-left-insert {
+  left: var(--login-left-left, 24%);
+  top: var(--login-left-top, 36%);
+}
+
+.login-hero[data-device-profile="desktop"] .login-page-right .login-right-insert {
+  left: var(--login-right-left, 10%);
+  top: var(--login-right-top, 34%);
+}
+
+.login-hero[data-device-profile="desktop"] .login-page-right-mode .login-right-insert {
+  top: var(--login-right-mode-top, 30%);
+}
+
+.login-hero[data-device-profile="desktop"] .login-kicker {
+  font-size: calc(0.56vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .ink-text,
+.login-hero[data-device-profile="desktop"] .typewriter {
+  font-size: calc(1.13vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .typewriter {
+  font-size: calc(1.17vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-switch-btn {
+  font-size: calc(1.04vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-field {
+  font-size: calc(1.02vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-link {
+  font-size: calc(0.98vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-field input {
+  min-height: calc(1.56vw * var(--login-desktop-text-scale, 1));
+  font-size: calc(0.82vw * var(--login-desktop-text-scale, 1));
+  padding:
+    calc(0.12vw * var(--login-desktop-text-scale, 1))
+    calc(0.38vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-toggle-password {
+  min-height: calc(1.56vw * var(--login-desktop-text-scale, 1));
+  font-size: calc(0.68vw * var(--login-desktop-text-scale, 1));
+  padding:
+    calc(0.08vw * var(--login-desktop-text-scale, 1))
+    calc(0.36vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile="desktop"] .auth-submit {
+  min-height: calc(1.56vw * var(--login-desktop-text-scale, 1));
+  font-size: calc(0.78vw * var(--login-desktop-text-scale, 1));
+  padding:
+    calc(0.1vw * var(--login-desktop-text-scale, 1))
+    calc(0.52vw * var(--login-desktop-text-scale, 1));
+}
+
+.login-hero[data-device-profile^="iphone-portrait"] .login-left-insert .typewriter,
+.login-hero[data-device-profile^="iphone-landscape"] .login-left-insert .typewriter {
+  font-size: clamp(0.56rem, calc(0.84rem * var(--login-phone-left-text-scale, 1)), 1.42rem);
+  line-height: 1.34;
+}
+
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .login-subtitle,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .login-subtitle {
+  font-size: clamp(0.56rem, calc(0.84rem * var(--login-phone-right-text-scale, 1)), 1.42rem);
+  line-height: 1.34;
+}
+
+.login-hero[data-device-profile^="iphone-portrait"] .login-left-insert .login-kicker,
+.login-hero[data-device-profile^="iphone-landscape"] .login-left-insert .login-kicker {
+  font-size: clamp(0.42rem, calc(0.52rem * var(--login-phone-left-text-scale, 1)), 1rem);
+}
+
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .login-kicker,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .login-kicker {
+  font-size: clamp(0.42rem, calc(0.52rem * var(--login-phone-right-text-scale, 1)), 1rem);
+}
+
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .auth-panel,
 .login-hero[data-device-profile="ipad-portrait"] .login-right-insert .auth-panel,
 .login-hero[data-device-profile="ipad-landscape"] .login-right-insert .auth-panel,
-.login-hero[data-device-profile="iphone-portrait"] .login-right-insert .auth-form,
-.login-hero[data-device-profile="iphone-landscape"] .login-right-insert .auth-form,
+.login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .auth-form,
+.login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .auth-form,
 .login-hero[data-device-profile="ipad-portrait"] .login-right-insert .auth-form,
 .login-hero[data-device-profile="ipad-landscape"] .login-right-insert .auth-form {
   width: 100%;
   max-width: 100%;
+}
+
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-left-insert > .login-kicker,
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-left-insert > .typewriter,
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-right-insert > .login-kicker,
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-right-insert > .login-subtitle,
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-note,
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .login-error {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .auth-heading-row {
+  display: none;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form {
+  position: fixed;
+  left: var(--login-popup-left-fixed-px, var(--login-popup-left, 70%));
+  top: var(--login-popup-top-fixed-px, var(--login-popup-top, 63%));
+  transform: translate(-50%, -50%);
+  width: var(--login-popup-width-fixed-px, min(var(--login-popup-width, 82vw), var(--login-popup-max-width, 335px)));
+  height: var(--login-popup-height-fixed-px, min(var(--login-popup-height, 18dvh), var(--login-popup-max-height, 56dvh)));
+  max-width: calc(100vw - 14px);
+  max-height: var(--login-popup-max-height, 56dvh);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  container-type: inline-size;
+  z-index: 100;
+}
+
+.login-hero[data-layout-edit="1"][data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-field,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-field input,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-password-row,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-actions,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-toggle-password,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-submit,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-link {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-password-row {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
 }
 
 .login-mode-cta {
@@ -282,6 +447,11 @@ body {
 
 .login-cta-link {
   font-weight: 700;
+}
+
+.login-reset-trigger {
+  font-size: inherit;
+  line-height: inherit;
 }
 
 .typewriter {
@@ -484,6 +654,242 @@ body {
   display: none;
 }
 
+.login-direct-edit-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.login-direct-step-arrow {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(240, 219, 185, 0.9);
+  border-radius: 999px;
+  background: rgba(30, 21, 14, 0.78);
+  color: #fff3df;
+  font: inherit;
+  font-size: 1.12rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  z-index: 132;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.login-direct-step-arrow-left {
+  left: 14px;
+}
+
+.login-direct-step-arrow-right {
+  right: 14px;
+}
+
+.login-direct-step-label {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 66px;
+  right: 66px;
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(240, 219, 185, 0.74);
+  border-radius: 999px;
+  background: rgba(30, 21, 14, 0.72);
+  color: #fff0d8;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  z-index: 131;
+  pointer-events: none;
+}
+
+.login-direct-quick-save {
+  position: fixed;
+  top: calc(66px + env(safe-area-inset-top));
+  right: 14px;
+  min-height: 40px;
+  border: 1px solid rgba(240, 219, 185, 0.92);
+  border-radius: 999px;
+  background: rgba(245, 233, 213, 0.96);
+  color: #20140c;
+  font-family: inherit;
+  font-size: 0.86rem;
+  padding: 0.35rem 0.8rem;
+  z-index: 132;
+  touch-action: manipulation;
+}
+
+.login-direct-edit-box {
+  position: absolute;
+  border: 1px dashed rgba(255, 244, 219, 0.98);
+  background: rgba(23, 16, 11, 0.28);
+  color: #fff6e8;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.login-direct-edit-box.is-selected {
+  border-style: solid;
+  box-shadow: 0 0 0 1px rgba(255, 225, 177, 0.8);
+}
+
+.login-direct-edit-handle {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 246, 229, 0.95);
+  background: rgba(237, 214, 181, 0.95);
+  touch-action: none;
+}
+
+.login-direct-popup-box {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(255, 244, 219, 0.98);
+  background: rgba(23, 16, 11, 0.28);
+  color: #fff6e8;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  z-index: 121;
+  padding: 0;
+}
+
+.login-direct-panel {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: calc(68px + env(safe-area-inset-bottom));
+  z-index: 130;
+  border: 1px solid rgba(235, 215, 181, 0.76);
+  border-radius: 12px;
+  background: rgba(24, 16, 10, 0.86);
+  color: #f8eee1;
+  backdrop-filter: blur(3px);
+}
+
+.login-direct-panel.is-collapsed {
+  width: max-content;
+  left: auto;
+  right: 10px;
+}
+
+.login-direct-panel-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.login-direct-panel-body {
+  display: grid;
+  gap: 0.32rem;
+  padding: 0 0.65rem 0.65rem;
+}
+
+.login-direct-panel-title {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-direct-panel-body label {
+  display: grid;
+  gap: 0.16rem;
+  font-size: 0.74rem;
+}
+
+.login-direct-panel-body input[type="range"] {
+  width: 100%;
+}
+
+.login-direct-panel-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.login-direct-panel-actions button {
+  border: 1px solid rgba(235, 215, 181, 0.88);
+  border-radius: 8px;
+  background: rgba(245, 233, 213, 0.95);
+  color: #22160f;
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.login-direct-panel-status {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.login-direct-admin-form {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(244, 230, 205, 0.24);
+}
+
+.login-direct-admin-form label {
+  display: grid;
+  gap: 0.14rem;
+  font-size: 0.72rem;
+}
+
+.login-direct-admin-form input {
+  border: 1px solid rgba(228, 203, 164, 0.54);
+  border-radius: 8px;
+  background: rgba(250, 241, 226, 0.98);
+  color: #2a1b11;
+  font: inherit;
+  padding: 0.28rem 0.4rem;
+}
+
+.login-direct-admin-actions {
+  display: flex;
+}
+
+.login-direct-admin-actions button {
+  border: 1px solid rgba(235, 215, 181, 0.88);
+  border-radius: 8px;
+  background: rgba(245, 233, 213, 0.95);
+  color: #22160f;
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 0.26rem 0.52rem;
+}
+
+.login-direct-admin-error {
+  margin: 0;
+  color: #ffd6d6;
+  font-size: 0.72rem;
+}
+
 @keyframes caret-blink {
   0%,
   100% {
@@ -636,11 +1042,12 @@ body {
     height: var(--login-book-height, 100%);
     min-height: var(--login-book-min-height, 100%);
     margin: 0;
+    margin-left: calc(50% - (var(--login-book-width, 860px) / 2));
     aspect-ratio: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     position: relative;
-    left: 50%;
-    transform: translateX(-50%);
+    left: auto;
+    transform: none;
   }
 
   .login-hero[data-preview-mode="1"] {
@@ -672,8 +1079,7 @@ body {
   .login-page-left .login-left-insert,
   .login-page-right .login-right-insert {
     position: absolute;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .login-page-left .login-left-insert {
@@ -722,35 +1128,91 @@ body {
 
   .auth-form-shell-phone.open .auth-form {
     position: fixed;
-    left: var(--login-popup-left, 70%);
-    top: var(--login-popup-top, 63%);
+    left: var(--login-popup-left-fixed-px, var(--login-popup-left, 70%));
+    top: var(--login-popup-top-fixed-px, var(--login-popup-top, 63%));
     transform: translate(-50%, -50%);
-    width: min(var(--login-popup-width, 82vw), var(--login-popup-max-width, 335px));
+    width: var(--login-popup-width-fixed-px, min(var(--login-popup-width, 82vw), var(--login-popup-max-width, 335px)));
+    height: var(--login-popup-height-fixed-px, min(var(--login-popup-height, 24dvh), var(--login-popup-max-height, 56dvh)));
+    max-width: calc(100vw - 14px);
     max-height: var(--login-popup-max-height, 56dvh);
     overflow-y: auto;
-    padding: 0.68rem;
+    overflow-x: hidden;
+    padding: calc(0.56rem * var(--login-phone-form-scale, 1));
     border: 1px solid rgba(142, 108, 72, 0.42);
     border-radius: 12px;
     background: rgba(243, 230, 209, 0.68);
     backdrop-filter: blur(2px);
     box-shadow: 0 14px 34px rgba(44, 29, 18, 0.34);
     z-index: 100;
+    box-sizing: border-box;
+    container-type: inline-size;
   }
 
   .auth-form-shell-phone.open .auth-field {
-    font-size: 0.92rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: clamp(0.7rem, calc(4.2cqw * var(--login-phone-form-scale, 1)), 0.94rem);
+  }
+
+  .auth-form-shell-phone.open .auth-password-row,
+  .auth-form-shell-phone.open .auth-actions {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .auth-form-shell-phone.open .auth-password-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    align-items: stretch;
   }
 
   .auth-form-shell-phone.open .auth-field input {
-    min-height: 2.55rem;
-    font-size: 1.02rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: clamp(1.34rem, calc(12cqw * var(--login-phone-form-scale, 1)), 2.04rem);
+    font-size: max(16px, clamp(0.82rem, calc(4.6cqw * var(--login-phone-form-scale, 1)), 0.98rem));
+    padding: calc(0.16rem * var(--login-phone-form-scale, 1)) calc(0.42rem * var(--login-phone-form-scale, 1));
   }
 
   .auth-form-shell-phone.open .auth-toggle-password,
   .auth-form-shell-phone.open .auth-submit,
   .auth-form-shell-phone.open .auth-link {
-    min-height: 2.42rem;
-    font-size: 0.98rem;
+    width: 100%;
+    max-width: 100%;
+    min-height: clamp(1.28rem, calc(11cqw * var(--login-phone-form-scale, 1)), 1.98rem);
+    font-size: clamp(0.72rem, calc(4cqw * var(--login-phone-form-scale, 1)), 0.96rem);
+  }
+
+  .auth-form-shell-phone.open .auth-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .auth-form-shell-phone.open .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid rgba(112, 84, 58, 0.34);
+    border-radius: 8px;
+    text-decoration: none;
+    background: linear-gradient(180deg, rgba(244, 232, 212, 0.38), rgba(232, 214, 190, 0.34));
+    padding: calc(0.12rem * var(--login-phone-form-scale, 1)) calc(0.2rem * var(--login-phone-form-scale, 1));
+  }
+
+  @container (max-width: 220px) {
+    .auth-form-shell-phone.open .auth-password-row {
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .auth-form-shell-phone.open .auth-toggle-password {
+      width: 100%;
+    }
   }
 
   .auth-mobile-close {
@@ -758,8 +1220,8 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    left: var(--login-popup-left, 70%);
-    top: var(--login-close-top, calc(63% + min(30vh, 176px)));
+    left: var(--login-popup-left-fixed-px, var(--login-popup-left, 70%));
+    top: var(--login-close-top-fixed-px, var(--login-close-top, calc(63% + min(30vh, 176px))));
     transform: translate(-50%, 0);
     width: fit-content;
     border: 1px solid rgba(112, 84, 58, 0.38);
@@ -780,8 +1242,9 @@ body {
     min-height: 100lvh;
     height: 100lvh;
     display: block;
-    overflow-x: auto;
-    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    overscroll-behavior: none;
     padding: max(0.3rem, env(safe-area-inset-top)) 0 max(0.3rem, env(safe-area-inset-bottom)) 0;
     background-size: var(--login-bg-size-x, var(--login-bg-size, 130%)) var(--login-bg-size-y, 100%);
     background-position: center var(--login-bg-pos-y, 0%);
@@ -803,9 +1266,10 @@ body {
 
   .login-hero[data-preview-mode="1"] .login-book {
     margin: 0;
+    margin-left: calc(50% - (var(--login-book-width, 930px) / 2));
     position: relative;
-    left: 50%;
-    transform: translateX(-50%);
+    left: auto;
+    transform: none;
   }
 
   .login-page {
@@ -833,8 +1297,7 @@ body {
   .login-page-left .login-left-insert,
   .login-page-right .login-right-insert {
     position: absolute;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .login-page-left .login-left-insert {
@@ -868,27 +1331,83 @@ body {
   }
 
   .auth-form-shell-phone.open .auth-form {
-    left: var(--login-popup-left, 69%);
-    top: var(--login-popup-top, 57%);
-    width: min(var(--login-popup-width, 50vw), var(--login-popup-max-width, 268px));
+    left: var(--login-popup-left-fixed-px, var(--login-popup-left, 69%));
+    top: var(--login-popup-top-fixed-px, var(--login-popup-top, 57%));
+    width: var(--login-popup-width-fixed-px, min(var(--login-popup-width, 50vw), var(--login-popup-max-width, 268px)));
+    height: var(--login-popup-height-fixed-px, min(var(--login-popup-height, 24dvh), var(--login-popup-max-height, 50dvh)));
+    max-width: calc(100vw - 14px);
     max-height: var(--login-popup-max-height, 50dvh);
-    padding: 0.5rem;
+    overflow-x: hidden;
+    padding: calc(0.44rem * var(--login-phone-form-scale, 1));
+    box-sizing: border-box;
+    container-type: inline-size;
   }
 
   .auth-form-shell-phone.open .auth-field {
-    font-size: 0.74rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: clamp(0.66rem, calc(4cqw * var(--login-phone-form-scale, 1)), 0.86rem);
+  }
+
+  .auth-form-shell-phone.open .auth-password-row,
+  .auth-form-shell-phone.open .auth-actions {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .auth-form-shell-phone.open .auth-password-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    align-items: stretch;
   }
 
   .auth-form-shell-phone.open .auth-field input {
-    min-height: 1.52rem;
-    font-size: 0.78rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: clamp(1.18rem, calc(11.8cqw * var(--login-phone-form-scale, 1)), 1.72rem);
+    font-size: max(16px, clamp(0.76rem, calc(4.2cqw * var(--login-phone-form-scale, 1)), 0.92rem));
+    padding: calc(0.12rem * var(--login-phone-form-scale, 1)) calc(0.32rem * var(--login-phone-form-scale, 1));
   }
 
   .auth-form-shell-phone.open .auth-toggle-password,
   .auth-form-shell-phone.open .auth-submit,
   .auth-form-shell-phone.open .auth-link {
-    min-height: 1.45rem;
-    font-size: 0.72rem;
+    width: 100%;
+    max-width: 100%;
+    min-height: clamp(1.16rem, calc(10cqw * var(--login-phone-form-scale, 1)), 1.64rem);
+    font-size: clamp(0.66rem, calc(3.7cqw * var(--login-phone-form-scale, 1)), 0.88rem);
+  }
+
+  .auth-form-shell-phone.open .auth-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .auth-form-shell-phone.open .auth-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border: 1px solid rgba(112, 84, 58, 0.34);
+    border-radius: 8px;
+    text-decoration: none;
+    background: linear-gradient(180deg, rgba(244, 232, 212, 0.38), rgba(232, 214, 190, 0.34));
+    padding: calc(0.1rem * var(--login-phone-form-scale, 1)) calc(0.16rem * var(--login-phone-form-scale, 1));
+  }
+
+  @container (max-width: 200px) {
+    .auth-form-shell-phone.open .auth-password-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+
+    .auth-form-shell-phone.open .auth-toggle-password {
+      width: 100%;
+    }
   }
 
   .auth-mobile-close {
@@ -896,8 +1415,8 @@ body {
     align-items: center;
     justify-content: center;
     position: fixed;
-    left: var(--login-popup-left, 69%);
-    top: var(--login-close-top, calc(57% + min(26vh, 110px)));
+    left: var(--login-popup-left-fixed-px, var(--login-popup-left, 69%));
+    top: var(--login-close-top-fixed-px, var(--login-close-top, calc(57% + min(26vh, 110px))));
     transform: translate(-50%, 0);
     width: fit-content;
     border: 1px solid rgba(112, 84, 58, 0.38);
@@ -913,8 +1432,52 @@ body {
   }
 }
 
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset {
+  height: auto;
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: clamp(2px, calc(var(--login-popup-height-fixed-px, 180px) * 0.015), 8px) !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-field {
+  gap: clamp(1px, calc(var(--login-popup-height-fixed-px, 180px) * 0.005), 4px) !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-field > span {
+  font-size: clamp(8px, calc(var(--login-popup-height-fixed-px, 180px) * 0.055), 12px) !important;
+  line-height: 1.1 !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-password-row {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: clamp(2px, calc(var(--login-popup-height-fixed-px, 180px) * 0.01), 6px) !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-field input,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-toggle-password,
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-submit {
+  min-height: clamp(16px, calc(var(--login-popup-height-fixed-px, 180px) * 0.12), 34px) !important;
+  height: auto !important;
+  font-size: clamp(10px, calc(var(--login-popup-height-fixed-px, 180px) * 0.07), 16px) !important;
+  line-height: 1.1 !important;
+  padding:
+    clamp(1px, calc(var(--login-popup-height-fixed-px, 180px) * 0.006), 6px)
+    clamp(3px, calc(var(--login-popup-width-fixed-px, 260px) * 0.018), 10px) !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-field input {
+  width: 100% !important;
+}
+
+.login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form.auth-form-reset .auth-toggle-password {
+  white-space: nowrap;
+}
+
 /* Force phone portrait rendering in desktop preview iframe so editor guides map correctly. */
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] {
   min-height: 100lvh;
   height: 100lvh;
   display: block;
@@ -925,60 +1488,60 @@ body {
   background-position: center var(--login-bg-pos-y, 2%);
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-book {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-book {
   width: var(--login-book-width, 860px);
   min-width: var(--login-book-min-width, 860px);
   max-width: none;
   height: var(--login-book-height, 100%);
   min-height: var(--login-book-min-height, 100%);
   margin: 0;
+  margin-left: calc(50% - (var(--login-book-width, 860px) / 2));
   aspect-ratio: auto;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   position: relative;
-  left: 50%;
-  transform: translateX(-50%);
+  left: auto;
+  transform: none;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page {
   height: 100%;
   padding: 0.4rem;
   gap: 0.24rem;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-left {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-left {
   padding-top: 0;
   padding-left: 0;
   padding-right: 0;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-right {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-right {
   padding-top: 0;
   padding-left: 0;
   padding-right: 0;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-right-mode {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-right-mode {
   padding-top: 0;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-left .login-left-insert,
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-right .login-right-insert {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-left .login-left-insert,
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-right .login-right-insert {
   position: absolute;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-left .login-left-insert {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-left .login-left-insert {
   left: var(--login-left-left, 31%);
   top: var(--login-left-top, 43%);
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-right .login-right-insert {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-right .login-right-insert {
   left: var(--login-right-left, 10%);
   top: var(--login-right-top, 40%);
 }
 
-.login-hero[data-preview-mode="1"][data-device-profile="iphone-portrait"] .login-page-right-mode .login-right-insert {
+.login-hero[data-preview-mode="1"][data-device-profile^="iphone-portrait"] .login-page-right-mode .login-right-insert {
   top: var(--login-right-mode-top, 37%);
 }
 
@@ -2010,6 +2573,10 @@ body {
   border: none;
   z-index: 1;
   background: #fff;
+}
+
+.device-layout-stage.is-dragging .device-layout-stage-frame {
+  pointer-events: none;
 }
 
 .device-layout-guides {

@@ -37,6 +37,7 @@ type DragState = {
   popupX: number;
   popupY: number;
   popupW: number;
+  popupH: number;
 };
 
 type PreviewBounds = {
@@ -45,6 +46,26 @@ type PreviewBounds = {
   width: number;
   height: number;
 };
+
+type StageRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type LiveInsertBounds = {
+  left: StageRect | null;
+  right: StageRect | null;
+};
+
+type PreviewAuthMode = "signup" | "signin" | "reset";
+
+function loginModeQuery(mode: PreviewAuthMode) {
+  if (mode === "signin") return "&mode=login";
+  if (mode === "reset") return "&mode=reset";
+  return "";
+}
 
 function labelForVar(key: string) {
   return key
@@ -67,6 +88,22 @@ function parsePercent(value: string | undefined, fallback: number) {
 function parseVw(value: string | undefined, fallback: number) {
   if (!value) return fallback;
   const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
+function parseUnitless(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
+function parseRem(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const match = value.match(/^(-?\d+(?:\.\d+)?)rem$/);
+  if (!match) return fallback;
+  const numeric = Number.parseFloat(match[1]);
   if (!Number.isFinite(numeric)) return fallback;
   return numeric;
 }
@@ -126,9 +163,15 @@ function rightCenterFromVars(rightLeft: number, rightWidth: number) {
 
 function stageSizeForProfile(profile: DeviceProfileKey) {
   switch (profile) {
+    case "desktop":
+      return { width: 1440, height: 900 };
     case "iphone-portrait":
+      return { width: 393, height: 852 };
+    case "iphone-portrait-max":
       return { width: 430, height: 932 };
     case "iphone-landscape":
+      return { width: 852, height: 393 };
+    case "iphone-landscape-max":
       return { width: 932, height: 430 };
     case "ipad-portrait":
       return { width: 768, height: 1024 };
@@ -139,6 +182,7 @@ function stageSizeForProfile(profile: DeviceProfileKey) {
 
 export default function DeviceLayoutEditor() {
   const [profile, setProfile] = useState<DeviceProfileKey>("iphone-portrait");
+  const [previewAuthMode, setPreviewAuthMode] = useState<PreviewAuthMode>("signup");
   const [vars, setVars] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -148,11 +192,18 @@ export default function DeviceLayoutEditor() {
   const [selectedTarget, setSelectedTarget] = useState<BoxTarget>("left");
   const [showGuides, setShowGuides] = useState(true);
   const [snapToGuides, setSnapToGuides] = useState(false);
+  const [desktopViewport, setDesktopViewport] = useState({ width: 1440, height: 900 });
+  const [phoneTextScaleBase, setPhoneTextScaleBase] = useState(1);
+  const [desktopTextScaleBase, setDesktopTextScaleBase] = useState(1);
   const [previewBounds, setPreviewBounds] = useState<PreviewBounds>({
     left: 0,
     top: 0,
     width: 100,
     height: 100,
+  });
+  const [liveInsertBounds, setLiveInsertBounds] = useState<LiveInsertBounds>({
+    left: null,
+    right: null,
   });
   const stageRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
@@ -172,7 +223,14 @@ export default function DeviceLayoutEditor() {
           throw new Error(payload.error || "Unable to load profile.");
         }
         if (cancelled) return;
-        setVars(payload.vars || {});
+        const nextVars = payload.vars || {};
+        setVars(nextVars);
+        if (profile.startsWith("iphone-")) {
+          setPhoneTextScaleBase(clamp(parseUnitless(nextVars["--login-phone-text-scale"], 1), 0.6, 3));
+        }
+        if (profile === "desktop") {
+          setDesktopTextScaleBase(clamp(parseUnitless(nextVars["--login-desktop-text-scale"], 1), 0.6, 3));
+        }
         if (payload.warning) {
           setStatus(`Loaded defaults (${payload.warning}).`);
         } else if (payload.source === "supabase") {
@@ -195,13 +253,29 @@ export default function DeviceLayoutEditor() {
     };
   }, [profile, reloadToken]);
 
-  const isPhoneProfile = profile === "iphone-portrait" || profile === "iphone-landscape";
-  const stageSize = stageSizeForProfile(profile);
+  useEffect(() => {
+    function syncDesktopViewport() {
+      const width = Math.max(1024, Math.round(window.innerWidth || 0));
+      const height = Math.max(640, Math.round(window.innerHeight || 0));
+      setDesktopViewport((current) => {
+        if (current.width === width && current.height === height) return current;
+        return { width, height };
+      });
+    }
+
+    syncDesktopViewport();
+    window.addEventListener("resize", syncDesktopViewport);
+    return () => window.removeEventListener("resize", syncDesktopViewport);
+  }, []);
+
+  const isPhoneProfile = profile.startsWith("iphone-");
+  const isIpadProfile = profile.startsWith("ipad-");
+  const isDesktopProfile = profile === "desktop";
+  const stageSize = profile === "desktop" ? desktopViewport : stageSizeForProfile(profile);
   const keys = useMemo(() => Object.keys(vars).sort((a, b) => a.localeCompare(b)), [vars]);
-  const previewSrc = useMemo(
-    () => `/login?mode=login&previewMode=1&previewProfile=${profile}`,
-    [profile]
-  );
+  const previewSrc = useMemo(() => {
+    return `/login?previewProfile=${profile}&previewMode=1${loginModeQuery(previewAuthMode)}`;
+  }, [previewAuthMode, profile]);
 
   const leftLeft = parsePercent(vars["--login-left-left"], isPhoneProfile ? 31 : 24);
   const leftTop = parsePercent(vars["--login-left-top"], isPhoneProfile ? 43 : 36);
@@ -215,12 +289,24 @@ export default function DeviceLayoutEditor() {
   const popupLeft = parsePercent(vars["--login-popup-left"], 70);
   const popupTop = parsePercent(vars["--login-popup-top"], 63);
   const popupWidth = parseVw(vars["--login-popup-width"], 82);
+  const popupHeight = parsePercent(
+    vars["--login-popup-height"],
+    isPhoneProfile ? (profile.includes("landscape") ? 16 : 18) : 24
+  );
   const bgSizeX = parsePercent(
     vars["--login-bg-size-x"],
     parsePercent(vars["--login-bg-size"], isPhoneProfile ? 180 : 100)
   );
   const bgSizeY = parsePercent(vars["--login-bg-size-y"], 100);
   const bgPosY = parsePercent(vars["--login-bg-pos-y"], 2);
+  const desktopTextScaleRaw = Number.parseFloat(vars["--login-desktop-text-scale"] ?? "1");
+  const desktopTextScale = Number.isFinite(desktopTextScaleRaw) ? desktopTextScaleRaw : 1;
+  const phoneTextScale = parseUnitless(vars["--login-phone-text-scale"], 1);
+  const ipadTextSize = parseRem(vars["--login-ipad-text-size"], profile === "ipad-portrait" ? 1.16 : 1);
+  const safePhoneTextScaleBase = clamp(phoneTextScaleBase, 0.6, 3);
+  const safeDesktopTextScaleBase = clamp(desktopTextScaleBase, 0.6, 3);
+  const phoneTextBoost = Math.max(0, ((phoneTextScale / safePhoneTextScaleBase) - 1) * 100);
+  const desktopTextBoost = Math.max(0, ((desktopTextScale / safeDesktopTextScaleBase) - 1) * 100);
 
   const safeLeftWidth = clamp(leftWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
   const safeRightWidth = clamp(rightWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
@@ -321,6 +407,12 @@ export default function DeviceLayoutEditor() {
 
   function startDrag(event: React.PointerEvent, target: DragTarget) {
     if (!stageRef.current) return;
+    event.preventDefault();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Best effort only. Drag still works via window listeners.
+    }
     const rect = stageRef.current.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const useBookSpace = target === "left" || target === "left-size" || target === "right" || target === "right-size";
@@ -348,6 +440,7 @@ export default function DeviceLayoutEditor() {
       popupX: popupLeft,
       popupY: popupTop,
       popupW: popupWidth,
+      popupH: popupHeight,
     });
   }
 
@@ -430,7 +523,10 @@ export default function DeviceLayoutEditor() {
       }
 
       if (activeDrag.target === "popup-size") {
-        setVarValue("--login-popup-width", toVw(clamp(activeDrag.popupW + deltaXPercent, 20, 96)));
+        setVarValues({
+          "--login-popup-width": toVw(clamp(activeDrag.popupW + deltaXPercent, 10, 120)),
+          "--login-popup-height": toPercent(clamp(activeDrag.popupH + deltaYPercent, 5, 95)),
+        });
       }
     }
 
@@ -563,51 +659,71 @@ export default function DeviceLayoutEditor() {
     }
   }
 
-  const leftOverlayCenterX = isPhoneProfile ? safeLeftStart + safeLeftWidth / 2 : safeLeftStart;
-  const leftOverlayCenterY = isPhoneProfile ? safeLeftTop + safeLeftHeight / 2 : safeLeftTop;
-  const rightOverlayCenterX = isPhoneProfile ? safeRightStart + safeRightWidth / 2 : safeRightStart;
-  const rightOverlayCenterY = isPhoneProfile ? safeRightModeTop + safeRightHeight / 2 : safeRightModeTop;
-
-  const leftBoxStyle = {
-    left: `${leftOverlayCenterX}%`,
-    top: `${leftOverlayCenterY}%`,
-    width: `${safeLeftWidth}%`,
-    height: `${safeLeftHeight}%`,
-  };
-
-  const rightBoxStyle = {
-    left: `${rightOverlayCenterX}%`,
-    top: `${rightOverlayCenterY}%`,
-    width: `${safeRightWidth}%`,
-    height: `${safeRightHeight}%`,
-  };
+  // While dragging/resizing, keep overlays driven directly by vars so
+  // periodic iframe re-measurement cannot cause visual jumps.
+  const leftBoxFromDom = dragState ? null : liveInsertBounds.left;
+  const rightBoxFromDom = dragState ? null : liveInsertBounds.right;
 
   const popupBoxStyle = {
     left: `${popupLeft}%`,
     top: `${popupTop}%`,
     width: `${popupWidth}%`,
-    height: "24%",
+    height: `${popupHeight}%`,
   };
 
-  const leftBoxStageStyle = {
-    left: `${previewBounds.left + (previewBounds.width * safeLeftStart) / 100}%`,
-    top: `${previewBounds.top + (previewBounds.height * safeLeftTop) / 100}%`,
-    width: `${(previewBounds.width * safeLeftWidth) / 100}%`,
-    height: `${(previewBounds.height * safeLeftHeight) / 100}%`,
-  };
+  const leftBoxStageStyle = leftBoxFromDom
+    ? {
+        left: `${leftBoxFromDom.left}%`,
+        top: `${leftBoxFromDom.top}%`,
+        width: `${leftBoxFromDom.width}%`,
+        height: `${leftBoxFromDom.height}%`,
+      }
+    : {
+        left: `${previewBounds.left + (previewBounds.width * safeLeftStart) / 100}%`,
+        top: `${previewBounds.top + (previewBounds.height * safeLeftTop) / 100}%`,
+        width: `${(previewBounds.width * safeLeftWidth) / 100}%`,
+        height: `${(previewBounds.height * safeLeftHeight) / 100}%`,
+      };
 
-  const rightBoxStageStyle = {
-    left: `${previewBounds.left + (previewBounds.width * safeRightStart) / 100}%`,
-    top: `${previewBounds.top + (previewBounds.height * safeRightModeTop) / 100}%`,
-    width: `${(previewBounds.width * safeRightWidth) / 100}%`,
-    height: `${(previewBounds.height * safeRightHeight) / 100}%`,
-  };
+  const rightBoxStageStyle = rightBoxFromDom
+    ? {
+        left: `${rightBoxFromDom.left}%`,
+        top: `${rightBoxFromDom.top}%`,
+        width: `${rightBoxFromDom.width}%`,
+        height: `${rightBoxFromDom.height}%`,
+      }
+    : {
+        left: `${previewBounds.left + (previewBounds.width * safeRightStart) / 100}%`,
+        top: `${previewBounds.top + (previewBounds.height * safeRightModeTop) / 100}%`,
+        width: `${(previewBounds.width * safeRightWidth) / 100}%`,
+        height: `${(previewBounds.height * safeRightHeight) / 100}%`,
+      };
 
   const guideViewportLeft = 0;
   const guideViewportRight = 100;
   const guideSeamLeft = previewBounds.left + previewBounds.width * 0.5;
   const guideViewportTop = 0;
   const guideViewportBottom = 100;
+
+  function rectToStageRect(elementRect: DOMRect, containerRect: DOMRect): StageRect {
+    return {
+      left: ((elementRect.left - containerRect.left) / containerRect.width) * 100,
+      top: ((elementRect.top - containerRect.top) / containerRect.height) * 100,
+      width: (elementRect.width / containerRect.width) * 100,
+      height: (elementRect.height / containerRect.height) * 100,
+    };
+  }
+
+  function rectDelta(a: StageRect | null, b: StageRect | null) {
+    if (!a && !b) return 0;
+    if (!a || !b) return Number.POSITIVE_INFINITY;
+    return (
+      Math.abs(a.left - b.left) +
+      Math.abs(a.top - b.top) +
+      Math.abs(a.width - b.width) +
+      Math.abs(a.height - b.height)
+    );
+  }
 
   function measurePreviewBounds() {
     const frame = previewFrameRef.current;
@@ -643,6 +759,31 @@ export default function DeviceLayoutEditor() {
       if (delta < 0.15) return current;
       return nextBounds;
     });
+
+    const leftInsert = frameDocument.querySelector(".login-left-insert") as HTMLElement | null;
+    const rightInsert = frameDocument.querySelector(".login-right-insert") as HTMLElement | null;
+    const nextInsertBounds: LiveInsertBounds = { left: null, right: null };
+
+    if (leftInsert) {
+      const leftRect = leftInsert.getBoundingClientRect();
+      if (leftRect.width > 0 && leftRect.height > 0) {
+        nextInsertBounds.left = rectToStageRect(leftRect, heroRect);
+      }
+    }
+
+    if (rightInsert) {
+      const rightRect = rightInsert.getBoundingClientRect();
+      if (rightRect.width > 0 && rightRect.height > 0) {
+        nextInsertBounds.right = rectToStageRect(rightRect, heroRect);
+      }
+    }
+
+    setLiveInsertBounds((current) => {
+      const leftDelta = rectDelta(current.left, nextInsertBounds.left);
+      const rightDelta = rectDelta(current.right, nextInsertBounds.right);
+      if (leftDelta < 0.15 && rightDelta < 0.15) return current;
+      return nextInsertBounds;
+    });
   }
 
   const leftLabel = `Left edge ${safeLeftStart.toFixed(1)}%, ${safeLeftTop.toFixed(1)}%`;
@@ -668,6 +809,7 @@ export default function DeviceLayoutEditor() {
   }, [profile, vars]);
 
   useEffect(() => {
+    if (dragState) return;
     const frame = previewFrameRef.current;
     if (!frame) return;
 
@@ -685,7 +827,7 @@ export default function DeviceLayoutEditor() {
       frame.contentWindow?.addEventListener("resize", runMeasure);
     };
 
-    timer = window.setInterval(runMeasure, 350);
+    timer = window.setInterval(runMeasure, 500);
     frame.addEventListener("load", onFrameLoad);
     runMeasure();
 
@@ -695,7 +837,11 @@ export default function DeviceLayoutEditor() {
       frame.contentWindow?.removeEventListener("resize", runMeasure);
       if (timer !== null) window.clearInterval(timer);
     };
-  }, [profile, reloadToken]);
+  }, [dragState, profile, reloadToken]);
+
+  useEffect(() => {
+    setLiveInsertBounds({ left: null, right: null });
+  }, [profile, reloadToken, previewAuthMode]);
 
   return (
     <section className="device-layout-shell">
@@ -715,6 +861,19 @@ export default function DeviceLayoutEditor() {
                 {DEVICE_PROFILE_LABELS[item]}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div className="bookcase-editor-label">
+          <span>Preview Auth Mode</span>
+          <select
+            value={previewAuthMode}
+            onChange={(event) => setPreviewAuthMode(event.target.value as PreviewAuthMode)}
+            disabled={loading || saving}
+          >
+            <option value="signup">Sign up (default /login)</option>
+            <option value="signin">Sign in (/login?mode=login)</option>
+            <option value="reset">Reset (/login?mode=reset)</option>
           </select>
         </div>
 
@@ -779,6 +938,59 @@ export default function DeviceLayoutEditor() {
             disabled={loading || saving}
           />
         </label>
+
+        {isPhoneProfile && (
+          <label className="bookcase-editor-label">
+            <span>Phone Text Boost (%)</span>
+            <input
+              type="range"
+              min={0}
+              max={200}
+              step={1}
+              value={Math.round(phoneTextBoost)}
+              onChange={(event) => {
+                const boost = Number(event.target.value);
+                const nextScale = clamp(safePhoneTextScaleBase * (1 + boost / 100), 0.6, 3);
+                setVarValue("--login-phone-text-scale", nextScale.toFixed(2));
+              }}
+              disabled={loading || saving}
+            />
+          </label>
+        )}
+
+        {isIpadProfile && (
+          <label className="bookcase-editor-label">
+            <span>iPad Text Size (rem)</span>
+            <input
+              type="range"
+              min={0.7}
+              max={2.4}
+              step={0.02}
+              value={ipadTextSize}
+              onChange={(event) => setVarValue("--login-ipad-text-size", `${Number(event.target.value).toFixed(2)}rem`)}
+              disabled={loading || saving}
+            />
+          </label>
+        )}
+
+        {isDesktopProfile && (
+          <label className="bookcase-editor-label">
+            <span>Desktop Text Boost (%)</span>
+            <input
+              type="range"
+              min={0}
+              max={200}
+              step={1}
+              value={Math.round(desktopTextBoost)}
+              onChange={(event) => {
+                const boost = Number(event.target.value);
+                const nextScale = clamp(safeDesktopTextScaleBase * (1 + boost / 100), 0.6, 3);
+                setVarValue("--login-desktop-text-scale", nextScale.toFixed(2));
+              }}
+              disabled={loading || saving}
+            />
+          </label>
+        )}
 
         {isPhoneProfile && (
           <>
@@ -870,8 +1082,24 @@ export default function DeviceLayoutEditor() {
           <button type="button" onClick={() => setReloadToken((current) => current + 1)} disabled={loading || saving}>
             Reload Profile
           </button>
-          <a href={`/login?mode=login&previewProfile=${profile}`} target="_blank" rel="noreferrer">
+          <a
+            href={`/login?previewProfile=${profile}${loginModeQuery(previewAuthMode)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
             Open Login Tab
+          </a>
+          <a href={`/login?previewProfile=${profile}`} target="_blank" rel="noreferrer">
+            Open Sign-up Tab
+          </a>
+          <a href={`/login?previewProfile=${profile}&mode=login`} target="_blank" rel="noreferrer">
+            Open Sign-in Tab
+          </a>
+          <a href={`/login?previewProfile=${profile}&mode=reset`} target="_blank" rel="noreferrer">
+            Open Reset Tab
+          </a>
+          <a href={`/login?previewProfile=${profile}&editLayout=1`} target="_blank" rel="noreferrer">
+            Open Direct Edit
           </a>
         </div>
 
@@ -902,7 +1130,7 @@ export default function DeviceLayoutEditor() {
         <h2>{DEVICE_PROFILE_LABELS[profile]} Live Preview</h2>
         <div
           ref={stageRef}
-          className="device-layout-stage"
+          className={`device-layout-stage ${dragState ? "is-dragging" : ""}`}
           style={{
             aspectRatio: `${stageSize.width} / ${stageSize.height}`,
           }}
