@@ -188,6 +188,135 @@ body {
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+  padding-top: 0.08em;
+  overflow: visible;
+}
+
+/* In direct edit mode, keep left content bounded while right content can flow to popup rules. */
+.login-hero[data-layout-edit="1"] .login-left-insert {
+  overflow: hidden !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-left-insert .typewriter,
+.login-hero[data-layout-edit="1"] .login-right-insert .login-subtitle {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert {
+  display: grid;
+  grid-template-rows: min-content min-content minmax(0, 1fr);
+  align-content: start;
+  container-type: size !important;
+  overflow: visible !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .login-subtitle {
+  margin: 0;
+  max-height: none !important;
+  overflow: visible;
+  padding-top: 0.06em;
+  padding-right: 2px;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-panel,
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-form-shell,
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-form {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-panel {
+  margin-top: 0 !important;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: min-content minmax(0, 1fr);
+  gap: 0.08rem;
+  overflow: visible;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-form-shell {
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 2px;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-form {
+  gap: 0.12rem;
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-field {
+  gap: 0.06rem;
+  font-size: clamp(7px, 4.8cqh, 12px);
+}
+
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-field input,
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-toggle-password,
+.login-hero[data-layout-edit="1"] .login-right-insert .auth-submit {
+  min-height: clamp(10px, 9cqh, 24px);
+  font-size: clamp(8px, 5.2cqh, 13px);
+  line-height: 1.05;
+  padding: clamp(1px, 0.9cqh, 4px) clamp(3px, 1.8cqh, 8px);
+}
+
+/* In edit mode, always position inserts by vars regardless of profile/media query.
+   This keeps drag boxes and actual content in the same coordinate system. */
+.login-hero[data-layout-edit="1"] .login-page {
+  height: 100%;
+  padding: 0 !important;
+  gap: 0.24rem;
+  overflow: visible !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-book {
+  overflow: visible !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-page-left,
+.login-hero[data-layout-edit="1"] .login-page-right,
+.login-hero[data-layout-edit="1"] .login-page-right-mode {
+  padding: 0 !important;
+  overflow: visible !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-page-left .login-left-insert,
+.login-hero[data-layout-edit="1"] .login-page-right .login-right-insert {
+  position: absolute !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-page-left .login-left-insert {
+  left: var(--login-left-left, 24%) !important;
+  top: var(--login-left-top, 36%) !important;
+  max-height: none !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-page-right .login-right-insert {
+  left: var(--login-right-left, 10%) !important;
+  top: var(--login-right-top, 34%) !important;
+  max-height: none !important;
+}
+
+.login-hero[data-layout-edit="1"] .login-page-right-mode .login-right-insert {
+  top: var(--login-right-mode-top, 30%) !important;
+}
+
+.login-hero[data-layout-edit="1"] .auth-field,
+.login-hero[data-layout-edit="1"] .auth-field input,
+.login-hero[data-layout-edit="1"] .auth-password-row,
+.login-hero[data-layout-edit="1"] .auth-toggle-password,
+.login-hero[data-layout-edit="1"] .auth-submit,
+.login-hero[data-layout-edit="1"] .auth-link {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-left-insert,
@@ -212,11 +341,156 @@ body {
   overflow: hidden;
 }
 
+/* iPad text often needs more vertical room.
+   Keep content inside the preview/page box and allow vertical scrolling when needed. */
+.login-hero[data-device-profile="ipad-portrait"] .login-left-insert,
+.login-hero[data-device-profile="ipad-landscape"] .login-left-insert {
+  height: max(var(--login-left-height, 20%), 10%);
+  min-height: 3.4rem;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.login-hero[data-device-profile="ipad-portrait"] .login-right-insert,
+.login-hero[data-device-profile="ipad-landscape"] .login-right-insert {
+  height: max(var(--login-right-height, 18%), 10%);
+  min-height: 3.4rem;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.login-hero[data-device-profile="ipad-portrait"] .login-page-left,
+.login-hero[data-device-profile="ipad-portrait"] .login-page-right {
+  padding-top: var(--login-ipad-page-top, 2.6rem);
+}
+
+.login-hero[data-device-profile="ipad-portrait"] .login-page-right-mode {
+  padding-top: var(--login-ipad-right-mode-top, 2.4rem);
+}
+
+.login-hero[data-device-profile="ipad-portrait"] .ink-text,
+.login-hero[data-device-profile="ipad-portrait"] .typewriter {
+  font-size: var(--login-ipad-text-size, 1.16rem);
+  line-height: var(--login-ipad-text-line-height, 1.66);
+}
+
+.login-hero[data-device-profile="ipad-landscape"] .login-page-left,
+.login-hero[data-device-profile="ipad-landscape"] .login-page-right {
+  padding-top: var(--login-ipad-page-top, 2.2rem);
+}
+
+.login-hero[data-device-profile="ipad-landscape"] .login-page-right-mode {
+  padding-top: var(--login-ipad-right-mode-top, 1.95rem);
+}
+
+.login-hero[data-device-profile="ipad-landscape"] .ink-text,
+.login-hero[data-device-profile="ipad-landscape"] .typewriter {
+  font-size: var(--login-ipad-text-size, 1rem);
+  line-height: var(--login-ipad-text-line-height, 1.58);
+}
+
 .login-hero[data-device-profile^="iphone-portrait"] .login-left-insert,
 .login-hero[data-device-profile^="iphone-landscape"] .login-left-insert,
 .login-hero[data-device-profile^="iphone-portrait"] .login-right-insert,
 .login-hero[data-device-profile^="iphone-landscape"] .login-right-insert {
   container-type: inline-size;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page {
+  height: 100%;
+  padding: 0;
+  gap: 0.24rem;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page-left,
+.login-hero[data-device-profile^="ipad-"] .login-page-right,
+.login-hero[data-device-profile^="ipad-"] .login-page-right-mode {
+  padding: 0;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page-left .login-left-insert,
+.login-hero[data-device-profile^="ipad-"] .login-page-right .login-right-insert {
+  position: absolute;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page-left .login-left-insert {
+  left: var(--login-left-left, 24%);
+  top: var(--login-left-top, 36%);
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page-right .login-right-insert {
+  left: var(--login-right-left, 10%);
+  top: var(--login-right-top, 34%);
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-page-right-mode .login-right-insert {
+  top: var(--login-right-mode-top, 30%);
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-right-insert {
+  display: grid;
+  grid-template-rows: min-content min-content minmax(0, 1fr);
+  align-content: start;
+  container-type: inline-size;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-right-insert .auth-panel,
+.login-hero[data-device-profile^="ipad-"] .login-right-insert .auth-form-shell,
+.login-hero[data-device-profile^="ipad-"] .login-right-insert .auth-form {
+  min-height: 0;
+}
+
+.login-hero[data-device-profile^="ipad-"] .login-right-insert .auth-panel {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.login-hero[data-device-profile^="ipad-"] .auth-password-row,
+.login-hero[data-device-profile^="ipad-"] .auth-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.login-hero[data-device-profile^="ipad-"] .auth-field,
+.login-hero[data-device-profile^="ipad-"] .auth-field input,
+.login-hero[data-device-profile^="ipad-"] .auth-password-row,
+.login-hero[data-device-profile^="ipad-"] .auth-toggle-password,
+.login-hero[data-device-profile^="ipad-"] .auth-submit,
+.login-hero[data-device-profile^="ipad-"] .auth-link {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.login-hero[data-device-profile^="ipad-"] .auth-field input,
+.login-hero[data-device-profile^="ipad-"] .auth-toggle-password,
+.login-hero[data-device-profile^="ipad-"] .auth-submit {
+  min-height: clamp(18px, 11cqw, 40px);
+  font-size: clamp(10px, 6.2cqw, 17px);
+  line-height: 1.1;
+  padding: clamp(2px, 1.4cqw, 8px) clamp(4px, 2.2cqw, 12px);
+}
+
+.login-hero[data-layout-edit="1"][data-device-profile^="ipad-"] .auth-form {
+  gap: 0.18rem;
+}
+
+.login-hero[data-layout-edit="1"][data-device-profile^="ipad-"] .auth-field {
+  gap: 0.08rem;
+  font-size: clamp(7px, 3.6cqw, 12px);
+}
+
+.login-hero[data-layout-edit="1"][data-device-profile^="ipad-"] .auth-field input,
+.login-hero[data-layout-edit="1"][data-device-profile^="ipad-"] .auth-toggle-password,
+.login-hero[data-layout-edit="1"][data-device-profile^="ipad-"] .auth-submit {
+  min-height: clamp(12px, 7.5cqw, 28px);
+  font-size: clamp(8px, 4.4cqw, 13px);
+  line-height: 1.05;
+  padding: clamp(1px, 0.8cqw, 5px) clamp(3px, 1.5cqw, 8px);
 }
 
 .login-hero[data-device-profile="desktop"] .login-page {
@@ -294,24 +568,24 @@ body {
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-left-insert .typewriter,
 .login-hero[data-device-profile^="iphone-landscape"] .login-left-insert .typewriter {
-  font-size: clamp(0.56rem, calc(0.84rem * var(--login-phone-left-text-scale, 1)), 1.42rem);
+  font-size: clamp(0.42rem, calc(0.84rem * var(--login-phone-left-text-scale, 1)), 1.42rem);
   line-height: 1.34;
 }
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .login-subtitle,
 .login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .login-subtitle {
-  font-size: clamp(0.56rem, calc(0.84rem * var(--login-phone-right-text-scale, 1)), 1.42rem);
+  font-size: clamp(0.42rem, calc(0.84rem * var(--login-phone-right-text-scale, 1)), 1.42rem);
   line-height: 1.34;
 }
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-left-insert .login-kicker,
 .login-hero[data-device-profile^="iphone-landscape"] .login-left-insert .login-kicker {
-  font-size: clamp(0.42rem, calc(0.52rem * var(--login-phone-left-text-scale, 1)), 1rem);
+  font-size: clamp(0.3rem, calc(0.52rem * var(--login-phone-left-text-scale, 1)), 1rem);
 }
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .login-kicker,
 .login-hero[data-device-profile^="iphone-landscape"] .login-right-insert .login-kicker {
-  font-size: clamp(0.42rem, calc(0.52rem * var(--login-phone-right-text-scale, 1)), 1rem);
+  font-size: clamp(0.3rem, calc(0.52rem * var(--login-phone-right-text-scale, 1)), 1rem);
 }
 
 .login-hero[data-device-profile^="iphone-portrait"] .login-right-insert .auth-panel,
@@ -339,6 +613,22 @@ body {
 
 .login-hero[data-device-profile^="iphone-"] .login-book.login-book-popup-open .auth-heading-row {
   display: none;
+}
+
+/* Keep page text visible while popup auth is open across all profiles. */
+.login-book.login-book-popup-open .login-left-insert > .login-kicker,
+.login-book.login-book-popup-open .login-left-insert > .typewriter,
+.login-book.login-book-popup-open .login-right-insert > .login-kicker,
+.login-book.login-book-popup-open .login-right-insert > .login-subtitle,
+.login-book.login-book-popup-open .login-note,
+.login-book.login-book-popup-open .login-error {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.login-book.login-book-popup-open .auth-heading-row {
+  display: grid !important;
 }
 
 .login-hero[data-device-profile^="iphone-"] .auth-form-shell-phone.open .auth-form {
@@ -533,7 +823,7 @@ body {
   display: grid;
   gap: 0.14vw;
   align-content: start;
-  margin-top: -0.78vw;
+  margin-top: 0;
 }
 
 .auth-heading-row {
@@ -647,6 +937,85 @@ body {
 .auth-form-shell {
   display: grid;
   gap: 8px;
+}
+
+.login-hero .auth-form-shell-popup:not(.open) .auth-form {
+  display: none;
+}
+
+.login-hero .auth-form-shell-popup.open .auth-form {
+  position: fixed;
+  left: var(--login-popup-left-fixed-px, var(--login-popup-left, 74%));
+  top: var(--login-popup-top-fixed-px, var(--login-popup-top, 60%));
+  transform: translate(-50%, -50%);
+  width: var(--login-popup-width-fixed-px, min(var(--login-popup-width, 28vw), var(--login-popup-max-width, 520px)));
+  height: var(--login-popup-height-fixed-px, min(var(--login-popup-height, 30dvh), var(--login-popup-max-height, 72dvh)));
+  max-width: calc(100vw - 20px);
+  max-height: var(--login-popup-max-height, 72dvh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem;
+  border: 1px solid rgba(142, 108, 72, 0.42);
+  border-radius: 12px;
+  background: rgba(243, 230, 209, 0.72);
+  backdrop-filter: blur(2px);
+  box-shadow: 0 14px 34px rgba(44, 29, 18, 0.34);
+  z-index: 100;
+  box-sizing: border-box;
+  container-type: inline-size;
+}
+
+.login-hero .auth-form-shell-popup.open .auth-field,
+.login-hero .auth-form-shell-popup.open .auth-field input,
+.login-hero .auth-form-shell-popup.open .auth-password-row,
+.login-hero .auth-form-shell-popup.open .auth-actions,
+.login-hero .auth-form-shell-popup.open .auth-submit,
+.login-hero .auth-form-shell-popup.open .auth-link {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.login-hero .auth-form-shell-popup.open .auth-password-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: stretch;
+}
+
+.login-hero .auth-form-shell-popup.open .auth-toggle-password {
+  justify-self: end;
+  width: auto;
+  min-width: 0;
+}
+
+.login-hero[data-layout-edit="1"] .auth-form-shell-popup.open .auth-form {
+  height: var(--login-popup-height-fixed-px, var(--login-popup-height, 40dvh)) !important;
+  max-height: none !important;
+  max-width: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.login-hero:not([data-layout-edit="1"]) .auth-mobile-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  left: var(--login-popup-left-fixed-px, var(--login-popup-left, 74%));
+  top: var(--login-close-top-fixed-px, var(--login-close-top, calc(60% + min(20vh, 160px))));
+  transform: translate(-50%, 0);
+  width: fit-content;
+  border: 1px solid rgba(112, 84, 58, 0.38);
+  border-radius: 8px;
+  background: rgba(244, 232, 212, 0.66);
+  color: rgba(36, 25, 14, 0.95);
+  padding: 0.28rem 0.54rem;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  z-index: 101;
 }
 
 .auth-mobile-open,
@@ -790,6 +1159,11 @@ body {
   width: max-content;
   left: auto;
   right: 10px;
+}
+
+.login-direct-panel.is-dragging {
+  pointer-events: none;
+  opacity: 0.42;
 }
 
 .login-direct-panel-toggle {
@@ -1741,11 +2115,141 @@ body {
   background-repeat: no-repeat;
 }
 
+.bookcase-scene.bookcase-scene-home {
+  background-image:
+    linear-gradient(135deg, rgba(8, 10, 16, 0.56), rgba(10, 10, 10, 0.22)),
+    url("/bookcase-with-text.png") !important;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.bookcase-scene.bookcase-scene-home[data-layout-edit="1"] {
+  overscroll-behavior: none;
+}
+
 .bookcase-canvas {
   min-height: 100dvh;
   width: 100%;
   position: relative;
   overflow: hidden;
+}
+
+.bookcase-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.04;
+  max-width: none !important;
+  white-space: normal;
+  word-break: break-word;
+  padding: 0.08em 0.16em;
+}
+
+.bookcase-home-editor-panel {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 45;
+  width: min(360px, 86vw);
+  max-height: min(88dvh, 640px);
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(206, 188, 161, 0.48);
+  border-radius: 12px;
+  background: rgba(17, 12, 8, 0.74);
+  backdrop-filter: blur(2px);
+  color: #f4ede3;
+}
+
+.bookcase-home-editor-panel h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.bookcase-home-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: grab;
+  user-select: none;
+}
+
+.bookcase-home-editor-header:active {
+  cursor: grabbing;
+}
+
+.bookcase-home-editor-hide {
+  border: 1px solid rgba(222, 200, 169, 0.66);
+  border-radius: 8px;
+  background: rgba(244, 232, 212, 0.85);
+  color: #2a1d12;
+  font: inherit;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.bookcase-home-editor-panel input[type="range"],
+.bookcase-home-editor-panel select {
+  width: 100%;
+}
+
+.bookcase-home-editor-status {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #f6e4c6;
+}
+
+.bookcase-home-edit-box {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(255, 245, 225, 0.96);
+  border-radius: 10px;
+  background: rgba(30, 22, 15, 0.08);
+  color: #fff4dd;
+  display: grid;
+  place-items: center;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  z-index: 43;
+}
+
+.bookcase-home-edit-box.is-selected {
+  border-style: solid;
+  border-color: rgba(248, 223, 178, 0.98);
+  box-shadow: 0 0 0 2px rgba(52, 34, 18, 0.4);
+}
+
+.bookcase-home-edit-handle {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 247, 233, 0.92);
+  background: rgba(236, 214, 180, 0.95);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.bookcase-home-tools-toggle {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 50;
+  border: 1px solid rgba(235, 215, 181, 0.88);
+  border-radius: 12px;
+  background: rgba(24, 16, 10, 0.9);
+  color: #f8eee1;
+  font: inherit;
+  padding: 10px 14px;
+  cursor: pointer;
 }
 
 .bookcase-nav-sign {
@@ -2704,6 +3208,11 @@ body {
     background-position: center top;
   }
 
+  .bookcase-scene.bookcase-scene-home {
+    background-size: cover;
+    background-position: center top;
+  }
+
   .bookcase-canvas {
     min-height: 100svh;
   }
@@ -2726,6 +3235,10 @@ body {
     font-size: clamp(1.2rem, 3.7vw, 2.6rem);
   }
 
+  .bookcase-home-editor-panel {
+    width: min(340px, 88vw);
+  }
+
   .bookcase-hotspot-title {
     max-width: 76vw;
     font-size: clamp(1.8rem, 6.2vw, 4rem);
@@ -2739,6 +3252,11 @@ body {
   }
 
   .bookcase-scene.bookcase-scene-empty {
+    background-size: cover;
+    background-position: center top;
+  }
+
+  .bookcase-scene.bookcase-scene-home {
     background-size: cover;
     background-position: center top;
   }
@@ -2769,6 +3287,13 @@ body {
     font-size: clamp(0.94rem, 4.8vw, 1.65rem);
   }
 
+  .bookcase-home-editor-panel {
+    left: max(8px, env(safe-area-inset-left));
+    top: max(8px, env(safe-area-inset-top));
+    width: min(320px, 92vw);
+    max-height: min(70dvh, 540px);
+  }
+
   .bookcase-hotspot-title {
     max-width: 78vw;
     font-size: clamp(1.55rem, 8vw, 2.8rem);
@@ -2786,6 +3311,21 @@ body {
     background-attachment: scroll;
   }
 }
+
+@media (max-height: 500px) {
+  .bookcase-scene.bookcase-scene-home[data-layout-edit="1"][data-bookcase-profile^="iphone-landscape"] {
+    min-height: 100svh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .bookcase-scene.bookcase-scene-home[data-layout-edit="1"][data-bookcase-profile^="iphone-landscape"] .bookcase-home-canvas {
+    min-height: 100svh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 .cover-preview-overlay {
   position: fixed;
   inset: 0;

@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Caveat } from "next/font/google";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { DEVICE_PROFILE_LABELS, isDeviceProfileKey, type DeviceProfileKey } from "@/lib/login/deviceLayout";
+import {
+  DEVICE_PROFILE_KEYS,
+  DEVICE_PROFILE_LABELS,
+  isDeviceProfileKey,
+  type DeviceProfileKey,
+} from "@/lib/login/deviceLayout";
 
 type AuthView = "signin" | "signup";
 type LayoutEditTarget = "left" | "left-size" | "right" | "right-size" | "popup" | "popup-size";
@@ -56,6 +61,11 @@ type RectFrame = {
   height: number;
 };
 
+type LayoutPageBounds = {
+  left: RectFrame | null;
+  right: RectFrame | null;
+};
+
 const caveat = Caveat({ subsets: ["latin"], weight: ["400", "600"] });
 
 const JOIN_LEFT_TEXT =
@@ -66,14 +76,16 @@ const SIGNIN_INTRO_TEXT = "Sign in with your email and password to open the book
 const SIGNUP_INTRO_TEXT = "Create an account with a username, email, and password.";
 const RESET_INTRO_TEXT = "Set a new password for your account.";
 
-const INSERT_X_MIN = -30;
-const INSERT_X_MAX = 130;
-const INSERT_TOP_MIN = -30;
-const INSERT_TOP_MAX = 130;
+const INSERT_X_MIN = -150;
+const INSERT_X_MAX = 250;
+const PAGE_INSERT_X_MIN = INSERT_X_MIN * 2;
+const PAGE_INSERT_X_MAX = INSERT_X_MAX * 2;
+const INSERT_TOP_MIN = -150;
+const INSERT_TOP_MAX = 300;
 const INSERT_WIDTH_MIN = 8;
-const INSERT_WIDTH_MAX = 90;
+const INSERT_WIDTH_MAX = 100;
 const INSERT_HEIGHT_MIN = 8;
-const INSERT_HEIGHT_MAX = 80;
+const INSERT_HEIGHT_MAX = 220;
 
 const QUICK_SETUP_STEPS: SetupStep[] = [
   { profile: "iphone-portrait", mode: "signup" },
@@ -126,6 +138,15 @@ function parseDvh(value: string | undefined, fallback: number) {
   return numeric;
 }
 
+function parseRem(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const match = value.match(/^(-?\d+(?:\.\d+)?)rem$/);
+  if (!match) return fallback;
+  const numeric = Number.parseFloat(match[1]);
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
 function toPercent(value: number) {
   return `${value.toFixed(2)}%`;
 }
@@ -135,11 +156,31 @@ function toVw(value: number) {
 }
 
 function maxLeftWidthForStart(start: number) {
-  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, (PAGE_INSERT_X_MAX - start) / 2));
 }
 
 function maxRightWidthForStart(start: number) {
-  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, (PAGE_INSERT_X_MAX - start) / 2));
+}
+
+function rectToFrame(elementRect: DOMRect, containerRect: DOMRect): RectFrame {
+  return {
+    left: ((elementRect.left - containerRect.left) / containerRect.width) * 100,
+    top: ((elementRect.top - containerRect.top) / containerRect.height) * 100,
+    width: (elementRect.width / containerRect.width) * 100,
+    height: (elementRect.height / containerRect.height) * 100,
+  };
+}
+
+function frameDelta(a: RectFrame | null, b: RectFrame | null) {
+  if (!a && !b) return 0;
+  if (!a || !b) return Number.POSITIVE_INFINITY;
+  return (
+    Math.abs(a.left - b.left) +
+    Math.abs(a.top - b.top) +
+    Math.abs(a.width - b.width) +
+    Math.abs(a.height - b.height)
+  );
 }
 
 function areVarsEqual(a: Record<string, string>, b: Record<string, string>) {
@@ -271,14 +312,18 @@ export default function LoginContent() {
   const [layoutDragState, setLayoutDragState] = useState<LayoutDragState | null>(null);
   const [selectedLayoutBox, setSelectedLayoutBox] = useState<"left" | "right" | "popup">("left");
   const [showLayoutPanel, setShowLayoutPanel] = useState(true);
-  const [phonePanelScaleBase, setPhonePanelScaleBase] = useState(1);
   const [showPhoneForm, setShowPhoneForm] = useState(false);
   const [showResetPopup, setShowResetPopup] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [bookFrame, setBookFrame] = useState<RectFrame>({
     left: 0,
     top: 0,
     width: 0,
     height: 0,
+  });
+  const [layoutPageBounds, setLayoutPageBounds] = useState<LayoutPageBounds>({
+    left: null,
+    right: null,
   });
   const heroRef = useRef<HTMLElement | null>(null);
   const bookRef = useRef<HTMLElement | null>(null);
@@ -286,6 +331,7 @@ export default function LoginContent() {
     ? (previewProfile as DeviceProfileKey)
     : null;
   const isPhoneLayout = isPhoneProfile(deviceProfile);
+  const isIpadLayout = !!deviceProfile && deviceProfile.startsWith("ipad-");
 
   const resolvedVars = useMemo(() => {
     const merged = { ...deviceVars, ...previewVars };
@@ -308,9 +354,11 @@ export default function LoginContent() {
     const phonePortraitQuery = window.matchMedia("(max-width: 680px) and (orientation: portrait)");
     const phoneLandscapeQuery = window.matchMedia("(max-height: 500px) and (orientation: landscape)");
     const ipadPortraitQuery = window.matchMedia("(max-width: 1024px) and (orientation: portrait)");
-    const ipadLandscapeQuery = window.matchMedia(
-      "(max-width: 1366px) and (orientation: landscape) and (pointer: coarse)"
-    );
+    const ipadLandscapeQuery = window.matchMedia("(max-width: 1366px) and (orientation: landscape)");
+    const ua = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+    const isLikelyIpad =
+      /iPad/i.test(ua) || ((/Macintosh|MacIntel/i.test(ua) || /MacIntel/i.test(platform)) && navigator.maxTouchPoints > 1);
 
     function addMediaChangeListener(query: MediaQueryList, listener: () => void) {
       if (typeof query.addEventListener === "function") {
@@ -334,9 +382,9 @@ export default function LoginContent() {
       } else if (phoneLandscapeQuery.matches) {
         const landscapeHeight = Math.max(window.innerHeight || 0, Math.round(window.visualViewport?.height || 0));
         nextProfile = landscapeHeight >= 410 ? "iphone-landscape-max" : "iphone-landscape";
-      } else if (ipadPortraitQuery.matches) {
+      } else if (isLikelyIpad && ipadPortraitQuery.matches) {
         nextProfile = "ipad-portrait";
-      } else if (ipadLandscapeQuery.matches) {
+      } else if (isLikelyIpad && ipadLandscapeQuery.matches) {
         nextProfile = "ipad-landscape";
       }
 
@@ -455,16 +503,12 @@ export default function LoginContent() {
   ]);
 
   useEffect(() => {
-    if (!isPhoneLayout) {
-      setShowPhoneForm(true);
-      return;
-    }
     if (isLayoutEditMode) {
       setShowPhoneForm(true);
       return;
     }
     setShowPhoneForm(false);
-  }, [isLayoutEditMode, isPhoneLayout]);
+  }, [isLayoutEditMode]);
 
   useEffect(() => {
     if (!isResetMode) {
@@ -483,7 +527,11 @@ export default function LoginContent() {
   }, [notice]);
 
   useEffect(() => {
-    if (!isPhoneLayout) return;
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!deviceProfile) return;
     let raf = 0;
     let timer: number | null = null;
 
@@ -527,7 +575,69 @@ export default function LoginContent() {
       window.visualViewport?.removeEventListener("scroll", measure);
       if (timer !== null) window.clearInterval(timer);
     };
-  }, [isPhoneLayout, deviceProfile]);
+  }, [deviceProfile]);
+
+  useEffect(() => {
+    const layoutEditingActive = isLayoutEditMode && !!deviceProfile;
+    if (!layoutEditingActive) {
+      setLayoutPageBounds((current) => {
+        if (!current.left && !current.right) return current;
+        return { left: null, right: null };
+      });
+      return;
+    }
+
+    let raf = 0;
+    let timer: number | null = null;
+
+    const measure = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const bookEl = bookRef.current;
+        if (!bookEl) return;
+        const bookRect = bookEl.getBoundingClientRect();
+        if (!bookRect.width || !bookRect.height) return;
+
+        const leftPage = bookEl.querySelector(".login-page-left") as HTMLElement | null;
+        const rightPage = bookEl.querySelector(".login-page-right") as HTMLElement | null;
+
+        const next: LayoutPageBounds = { left: null, right: null };
+        if (leftPage) {
+          const leftRect = leftPage.getBoundingClientRect();
+          if (leftRect.width > 0 && leftRect.height > 0) {
+            next.left = rectToFrame(leftRect, bookRect);
+          }
+        }
+        if (rightPage) {
+          const rightRect = rightPage.getBoundingClientRect();
+          if (rightRect.width > 0 && rightRect.height > 0) {
+            next.right = rectToFrame(rightRect, bookRect);
+          }
+        }
+
+        setLayoutPageBounds((current) => {
+          if (frameDelta(current.left, next.left) < 0.15 && frameDelta(current.right, next.right) < 0.15) {
+            return current;
+          }
+          return next;
+        });
+      });
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("orientationchange", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    timer = window.setInterval(measure, 350);
+
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("orientationchange", measure);
+      window.visualViewport?.removeEventListener("resize", measure);
+      if (timer !== null) window.clearInterval(timer);
+    };
+  }, [deviceProfile, isLayoutEditMode]);
 
   function resetFeedback() {
     setErr(null);
@@ -677,11 +787,11 @@ export default function LoginContent() {
   );
   const popupMaxWidthPx = parsePx(
     resolvedVars["--login-popup-max-width"],
-    isPhoneLandscapeProfile(deviceProfile) ? 268 : 335
+    isPhoneLandscapeProfile(deviceProfile) ? 268 : isPhoneLayout ? 335 : isIpadLayout ? 460 : 520
   );
   const popupMaxHeightDvh = parseDvh(
     resolvedVars["--login-popup-max-height"],
-    isPhoneLandscapeProfile(deviceProfile) ? 50 : 56
+    isPhoneLandscapeProfile(deviceProfile) ? 50 : isPhoneLayout ? 56 : 72
   );
   const bgSizeX = parsePercent(
     resolvedVars["--login-bg-size-x"],
@@ -694,18 +804,22 @@ export default function LoginContent() {
   const safeRightWidth = clamp(rightWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
   const safeLeftHeight = clamp(leftHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
   const safeRightHeight = clamp(rightHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
-  const safeLeftStart = clamp(leftLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeLeftWidth);
-  const safeRightStart = clamp(50 + rightLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeRightWidth);
+  const safeLeftPageStart = clamp(leftLeft, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeLeftWidth * 2);
+  const safeRightPageStart = clamp(rightLeft, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeRightWidth * 2);
   const safeLeftTop = clamp(leftTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightTop = clamp(rightTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightModeTop = clamp(rightModeTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
-  const canEditLayout = isLayoutEditMode && isPhoneLayout && !!deviceProfile;
+  const canEditLayout = isLayoutEditMode && !!deviceProfile;
+  const canPhoneQuickSetup = canEditLayout && isPhoneLayout;
+  const leftPageBounds = layoutPageBounds.left ?? { left: 0, top: 0, width: 50, height: 100 };
+  const rightPageBounds = layoutPageBounds.right ?? { left: 50, top: 0, width: 50, height: 100 };
   const hasBookFrame = bookFrame.width > 0 && bookFrame.height > 0;
-  const viewportWidth = typeof window === "undefined" ? 430 : window.innerWidth;
-  const viewportHeight = typeof window === "undefined" ? 932 : window.innerHeight;
+  const viewportWidth = isMounted && typeof window !== "undefined" ? window.innerWidth : 430;
+  const viewportHeight = isMounted && typeof window !== "undefined" ? window.innerHeight : 932;
+  const popupWidthFromBookPx = hasBookFrame ? (bookFrame.width * popupWidth) / 100 : (viewportWidth * popupWidth) / 100;
   const popupWidthPx = isLayoutEditMode
-    ? (viewportWidth * popupWidth) / 100
-    : Math.min((viewportWidth * popupWidth) / 100, popupMaxWidthPx);
+    ? popupWidthFromBookPx
+    : Math.min(popupWidthFromBookPx, popupMaxWidthPx);
   const popupHeightFromBookPx = hasBookFrame ? (bookFrame.height * popupHeight) / 100 : (viewportHeight * popupHeight) / 100;
   const popupMaxHeightPx = (viewportHeight * popupMaxHeightDvh) / 100;
   const popupHeightPx = isLayoutEditMode ? popupHeightFromBookPx : Math.min(popupHeightFromBookPx, popupMaxHeightPx);
@@ -714,10 +828,12 @@ export default function LoginContent() {
   const popupCloseTopPx = popupTopPx + popupHeightPx / 2 + 4;
   const popupScaleBaseWidthPx = isPhoneLandscapeProfile(deviceProfile) ? 268 : 335;
   const popupScaleBaseHeightPx = isPhoneLandscapeProfile(deviceProfile) ? 180 : 240;
-  const phoneTextScaleRaw = Number.parseFloat(resolvedVars["--login-phone-text-scale"] ?? "1");
+  const phoneTextScaleRaw = Number.parseFloat(resolvedVars["--login-phone-text-scale"] ?? "0.6");
   const phoneTextScale = Number.isFinite(phoneTextScaleRaw) ? clamp(phoneTextScaleRaw, 0.6, 3) : 1;
-  const safePhonePanelScaleBase = clamp(phonePanelScaleBase, 0.6, 3);
-  const phoneTextBoost = Math.max(0, ((phoneTextScale / safePhonePanelScaleBase) - 1) * 100);
+  const ipadTextSize = parseRem(
+    resolvedVars["--login-ipad-text-size"],
+    deviceProfile === "ipad-portrait" ? 1.16 : 1
+  );
   const autoPhoneFormScale = clamp(
     Math.min(popupWidthPx / popupScaleBaseWidthPx, popupHeightPx / popupScaleBaseHeightPx),
     0.58,
@@ -737,27 +853,29 @@ export default function LoginContent() {
   );
   const activeSetupLabel = `${DEVICE_PROFILE_LABELS[activeSetupProfile]} | ${setupModeLabel(activeSetupMode)}`;
   const isResetPopupOpen = isResetMode && showResetPopup;
-  const shouldShowAuthForm = isLayoutEditMode && isPhoneLayout
+  const shouldShowAuthForm = isLayoutEditMode
     ? true
-    : (isResetMode ? showResetPopup : (isPhoneLayout ? showPhoneForm : true));
-  const shouldOpenAuthShell = isLayoutEditMode && isPhoneLayout
+    : (isResetMode ? showResetPopup : showPhoneForm);
+  const shouldOpenAuthShell = isLayoutEditMode
     ? true
-    : (isPhoneLayout ? (showPhoneForm || isResetPopupOpen) : shouldShowAuthForm);
+    : (showPhoneForm || isResetPopupOpen);
   // Keep popup-open visual hiding out of direct edit mode so page text remains visible
   // while adjusting layout/text scale.
-  const isPhonePopupVisible = isPhoneLayout && shouldOpenAuthShell && !isLayoutEditMode;
+  const isPhonePopupVisible = shouldOpenAuthShell && !isLayoutEditMode;
   const runtimeStyleWithAutoScale = useMemo<CSSProperties | undefined>(() => {
     const nextStyle: Record<string, string> = runtimeStyle ? { ...(runtimeStyle as Record<string, string>) } : {};
-    if (isPhoneLayout) {
-      nextStyle["--login-phone-form-scale"] = autoPhoneFormScale.toFixed(2);
-      nextStyle["--login-phone-left-text-scale"] = autoPhoneLeftTextScale.toFixed(2);
-      nextStyle["--login-phone-right-text-scale"] = autoPhoneRightTextScale.toFixed(2);
-      nextStyle["--login-phone-text-scale"] = phoneTextScale.toFixed(2);
+    if (isMounted) {
       nextStyle["--login-popup-left-fixed-px"] = `${popupLeftPx.toFixed(2)}px`;
       nextStyle["--login-popup-top-fixed-px"] = `${popupTopPx.toFixed(2)}px`;
       nextStyle["--login-popup-width-fixed-px"] = `${popupWidthPx.toFixed(2)}px`;
       nextStyle["--login-popup-height-fixed-px"] = `${popupHeightPx.toFixed(2)}px`;
       nextStyle["--login-close-top-fixed-px"] = `${popupCloseTopPx.toFixed(2)}px`;
+    }
+    if (isPhoneLayout) {
+      nextStyle["--login-phone-form-scale"] = autoPhoneFormScale.toFixed(2);
+      nextStyle["--login-phone-left-text-scale"] = autoPhoneLeftTextScale.toFixed(2);
+      nextStyle["--login-phone-right-text-scale"] = autoPhoneRightTextScale.toFixed(2);
+      nextStyle["--login-phone-text-scale"] = phoneTextScale.toFixed(2);
     }
     return Object.keys(nextStyle).length > 0 ? (nextStyle as CSSProperties) : undefined;
   }, [
@@ -765,6 +883,7 @@ export default function LoginContent() {
     autoPhoneLeftTextScale,
     autoPhoneRightTextScale,
     hasBookFrame,
+    isMounted,
     isPhoneLayout,
     phoneTextScale,
     popupCloseTopPx,
@@ -776,9 +895,61 @@ export default function LoginContent() {
   ]);
 
   useEffect(() => {
-    if (!canEditLayout || !isPhoneLayout) return;
-    setPhonePanelScaleBase(phoneTextScale);
-  }, [canEditLayout, deviceProfile, isPhoneLayout]);
+    if (!canEditLayout) return;
+    const nextValues: Record<string, string> = {};
+
+    if (Math.abs(leftLeft - safeLeftPageStart) > 0.01) {
+      nextValues["--login-left-left"] = toPercent(safeLeftPageStart);
+    }
+    if (Math.abs(rightLeft - safeRightPageStart) > 0.01) {
+      nextValues["--login-right-left"] = toPercent(safeRightPageStart);
+    }
+    if (Math.abs(leftWidth - safeLeftWidth) > 0.01) {
+      nextValues["--login-left-width"] = toPercent(safeLeftWidth);
+    }
+    if (Math.abs(rightWidth - safeRightWidth) > 0.01) {
+      nextValues["--login-right-width"] = toPercent(safeRightWidth);
+    }
+    if (Math.abs(leftHeight - safeLeftHeight) > 0.01) {
+      nextValues["--login-left-height"] = toPercent(safeLeftHeight);
+    }
+    if (Math.abs(rightHeight - safeRightHeight) > 0.01) {
+      nextValues["--login-right-height"] = toPercent(safeRightHeight);
+    }
+    if (Math.abs(leftTop - safeLeftTop) > 0.01) {
+      nextValues["--login-left-top"] = toPercent(safeLeftTop);
+    }
+    if (Math.abs(rightTop - safeRightTop) > 0.01) {
+      nextValues["--login-right-top"] = toPercent(safeRightTop);
+    }
+    if (Math.abs(rightModeTop - safeRightModeTop) > 0.01) {
+      nextValues["--login-right-mode-top"] = toPercent(safeRightModeTop);
+    }
+
+    if (Object.keys(nextValues).length > 0) {
+      setLayoutVarValues(nextValues);
+    }
+  }, [
+    canEditLayout,
+    leftHeight,
+    leftLeft,
+    leftTop,
+    leftWidth,
+    rightHeight,
+    rightLeft,
+    rightModeTop,
+    rightTop,
+    rightWidth,
+    safeLeftHeight,
+    safeLeftPageStart,
+    safeLeftTop,
+    safeLeftWidth,
+    safeRightHeight,
+    safeRightModeTop,
+    safeRightPageStart,
+    safeRightTop,
+    safeRightWidth,
+  ]);
 
   function goToSetupStep(offset: number) {
     const length = QUICK_SETUP_STEPS.length;
@@ -793,6 +964,14 @@ export default function LoginContent() {
     } else {
       params.delete("mode");
     }
+    params.delete("authError");
+    router.replace(`${pathname}?${params.toString()}`);
+  }
+
+  function switchEditProfile(nextProfile: DeviceProfileKey) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("editLayout", "1");
+    params.set("previewProfile", nextProfile);
     params.delete("authError");
     router.replace(`${pathname}?${params.toString()}`);
   }
@@ -819,7 +998,7 @@ export default function LoginContent() {
     if (target === "popup" || target === "popup-size") {
       const bookRect = bookRef.current?.getBoundingClientRect();
       if (target === "popup-size") {
-        stageWidth = window.innerWidth || 1;
+        stageWidth = bookRect?.width || window.innerWidth || 1;
         stageHeight = bookRect?.height || window.innerHeight || 1;
       } else if (bookRect?.width && bookRect.height) {
         stageWidth = bookRect.width;
@@ -831,8 +1010,19 @@ export default function LoginContent() {
     } else {
       const bookRect = bookRef.current?.getBoundingClientRect();
       if (!bookRect?.width || !bookRect.height) return;
-      stageWidth = bookRect.width;
-      stageHeight = bookRect.height;
+      const page =
+        target === "left" || target === "left-size"
+          ? leftPageBounds
+          : target === "right" || target === "right-size"
+            ? rightPageBounds
+            : null;
+      if (page && page.width > 0 && page.height > 0) {
+        stageWidth = (bookRect.width * page.width) / 100;
+        stageHeight = (bookRect.height * page.height) / 100;
+      } else {
+        stageWidth = bookRect.width / 2;
+        stageHeight = bookRect.height;
+      }
     }
 
     setSelectedLayoutBox(target === "left" || target === "left-size" ? "left" : target === "right" || target === "right-size" ? "right" : "popup");
@@ -843,11 +1033,11 @@ export default function LoginContent() {
       startClientY: event.clientY,
       stageWidth,
       stageHeight,
-      leftX: safeLeftStart * 2,
+      leftX: safeLeftPageStart,
       leftY: safeLeftTop,
       leftW: safeLeftWidth,
       leftH: safeLeftHeight,
-      rightX: (safeRightStart - 50) * 2,
+      rightX: safeRightPageStart,
       rightY: safeRightTop,
       rightModeY: safeRightModeTop,
       rightW: safeRightWidth,
@@ -869,20 +1059,24 @@ export default function LoginContent() {
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
-        const nextStart = clamp(activeDrag.leftX / 2 + deltaXPercent, INSERT_X_MIN, INSERT_X_MAX - activeDrag.leftW);
+        const nextStart = clamp(
+          activeDrag.leftX + deltaXPercent,
+          PAGE_INSERT_X_MIN,
+          PAGE_INSERT_X_MAX - activeDrag.leftW * 2
+        );
         const nextTop = clamp(activeDrag.leftY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX);
         setLayoutVarValues({
-          "--login-left-left": toPercent(nextStart * 2),
+          "--login-left-left": toPercent(nextStart),
           "--login-left-top": toPercent(nextTop),
         });
         return;
       }
 
       if (activeDrag.target === "left-size") {
-        const start = activeDrag.leftX / 2;
+        const start = activeDrag.leftX;
         const maxWidth = maxLeftWidthForStart(start);
         setLayoutVarValues({
-          "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
+          "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent / 2, INSERT_WIDTH_MIN, maxWidth)),
           "--login-left-height": toPercent(clamp(activeDrag.leftH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)),
         });
         return;
@@ -890,13 +1084,13 @@ export default function LoginContent() {
 
       if (activeDrag.target === "right") {
         const nextStart = clamp(
-          50 + activeDrag.rightX / 2 + deltaXPercent,
-          INSERT_X_MIN,
-          INSERT_X_MAX - activeDrag.rightW
+          activeDrag.rightX + deltaXPercent,
+          PAGE_INSERT_X_MIN,
+          PAGE_INSERT_X_MAX - activeDrag.rightW * 2
         );
         const nextTop = clamp(activeDrag.rightModeY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX);
         setLayoutVarValues({
-          "--login-right-left": toPercent((nextStart - 50) * 2),
+          "--login-right-left": toPercent(nextStart),
           "--login-right-top": toPercent(nextTop),
           "--login-right-mode-top": toPercent(nextTop),
         });
@@ -904,10 +1098,10 @@ export default function LoginContent() {
       }
 
       if (activeDrag.target === "right-size") {
-        const start = 50 + activeDrag.rightX / 2;
+        const start = activeDrag.rightX;
         const maxWidth = maxRightWidthForStart(start);
         setLayoutVarValues({
-          "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
+          "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent / 2, INSERT_WIDTH_MIN, maxWidth)),
           "--login-right-height": toPercent(clamp(activeDrag.rightH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)),
         });
         return;
@@ -924,7 +1118,7 @@ export default function LoginContent() {
       if (activeDrag.target === "popup-size") {
         setLayoutVarValues({
           "--login-popup-width": toVw(clamp(activeDrag.popupW + deltaXPercent, 10, 120)),
-          "--login-popup-height": toPercent(clamp(activeDrag.popupH + deltaYPercent, 5, 95)),
+          "--login-popup-height": toPercent(clamp(activeDrag.popupH + deltaYPercent, 5, 220)),
         });
       }
     }
@@ -1047,17 +1241,17 @@ export default function LoginContent() {
   }
 
   const leftEditBoxStyle: CSSProperties = {
-    left: `${safeLeftStart}%`,
-    top: `${safeLeftTop}%`,
-    width: `${safeLeftWidth}%`,
-    height: `${safeLeftHeight}%`,
+    left: `${leftPageBounds.left + (leftPageBounds.width * safeLeftPageStart) / 100}%`,
+    top: `${leftPageBounds.top + (leftPageBounds.height * safeLeftTop) / 100}%`,
+    width: `${(leftPageBounds.width * (safeLeftWidth * 2)) / 100}%`,
+    height: `${(leftPageBounds.height * safeLeftHeight) / 100}%`,
   };
 
   const rightEditBoxStyle: CSSProperties = {
-    left: `${safeRightStart}%`,
-    top: `${safeRightModeTop}%`,
-    width: `${safeRightWidth}%`,
-    height: `${safeRightHeight}%`,
+    left: `${rightPageBounds.left + (rightPageBounds.width * safeRightPageStart) / 100}%`,
+    top: `${rightPageBounds.top + (rightPageBounds.height * safeRightModeTop) / 100}%`,
+    width: `${(rightPageBounds.width * (safeRightWidth * 2)) / 100}%`,
+    height: `${(rightPageBounds.height * safeRightHeight) / 100}%`,
   };
 
   const popupEditBoxStyle: CSSProperties = {
@@ -1078,21 +1272,25 @@ export default function LoginContent() {
     >
       {canEditLayout && (
         <>
-          <button
-            type="button"
-            className="login-direct-step-arrow login-direct-step-arrow-left"
-            onClick={() => goToSetupStep(-1)}
-          >
-            {"<"}
-          </button>
-          <button
-            type="button"
-            className="login-direct-step-arrow login-direct-step-arrow-right"
-            onClick={() => goToSetupStep(1)}
-          >
-            {">"}
-          </button>
-          <div className="login-direct-step-label">{activeSetupLabel}</div>
+          {canPhoneQuickSetup && (
+            <>
+              <button
+                type="button"
+                className="login-direct-step-arrow login-direct-step-arrow-left"
+                onClick={() => goToSetupStep(-1)}
+              >
+                {"<"}
+              </button>
+              <button
+                type="button"
+                className="login-direct-step-arrow login-direct-step-arrow-right"
+                onClick={() => goToSetupStep(1)}
+              >
+                {">"}
+              </button>
+              <div className="login-direct-step-label">{activeSetupLabel}</div>
+            </>
+          )}
           <button
             type="button"
             className="login-direct-quick-save"
@@ -1130,13 +1328,13 @@ export default function LoginContent() {
                   <button
                     type="button"
                     className="ink-link login-reset-trigger"
-                    onClick={() => {
-                      resetFeedback();
-                      setShowResetPopup(true);
-                      if (isPhoneLayout) setShowPhoneForm(true);
-                    }}
-                    disabled={busy}
-                  >
+                      onClick={() => {
+                        resetFeedback();
+                        setShowResetPopup(true);
+                        setShowPhoneForm(true);
+                      }}
+                      disabled={busy}
+                    >
                     Click here
                   </button>
                 </>
@@ -1153,7 +1351,7 @@ export default function LoginContent() {
                         onClick={() => {
                           resetFeedback();
                           setAuthView("signin");
-                          if (isPhoneLayout) setShowPhoneForm(true);
+                          setShowPhoneForm(true);
                         }}
                         disabled={busy}
                       >
@@ -1165,7 +1363,7 @@ export default function LoginContent() {
                         onClick={() => {
                           resetFeedback();
                           setAuthView("signup");
-                          if (isPhoneLayout) setShowPhoneForm(true);
+                          setShowPhoneForm(true);
                         }}
                         disabled={busy}
                       >
@@ -1175,7 +1373,9 @@ export default function LoginContent() {
                   )}
                 </div>
 
-                <div className={`auth-form-shell ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${shouldOpenAuthShell ? "open" : ""}`}>
+                <div
+                  className={`auth-form-shell auth-form-shell-popup ${isPhoneLayout ? "auth-form-shell-phone" : ""} ${shouldOpenAuthShell ? "open" : ""}`}
+                >
                   {shouldShowAuthForm && (isResetMode ? (
                     <form className="auth-form auth-form-reset" onSubmit={handleResetPassword}>
                       <label className="auth-field">
@@ -1339,7 +1539,7 @@ export default function LoginContent() {
                     </form>
                     ))}
 
-                  {isPhoneLayout && shouldOpenAuthShell && !isLayoutEditMode && (
+                  {shouldOpenAuthShell && !isLayoutEditMode && (
                     <button
                       type="button"
                       className="auth-mobile-close"
@@ -1414,7 +1614,7 @@ export default function LoginContent() {
       )}
 
       {canEditLayout && (
-        <aside className={`login-direct-panel ${showLayoutPanel ? "" : "is-collapsed"}`}>
+        <aside className={`login-direct-panel ${showLayoutPanel ? "" : "is-collapsed"} ${layoutDragState ? "is-dragging" : ""}`}>
           <button
             type="button"
             className="login-direct-panel-toggle"
@@ -1425,7 +1625,23 @@ export default function LoginContent() {
 
           {showLayoutPanel && (
             <div className="login-direct-panel-body">
-              <p className="login-direct-panel-title">iPhone Direct Layout Edit</p>
+              <p className="login-direct-panel-title">
+                {deviceProfile ? `${DEVICE_PROFILE_LABELS[deviceProfile]} Direct Layout Edit` : "Direct Layout Edit"}
+              </p>
+              <label>
+                Profile
+                <select
+                  value={deviceProfile ?? "desktop"}
+                  onChange={(event) => switchEditProfile(event.target.value as DeviceProfileKey)}
+                  disabled={layoutSaving || adminAuthBusy}
+                >
+                  {DEVICE_PROFILE_KEYS.map((profileKey) => (
+                    <option key={profileKey} value={profileKey}>
+                      {DEVICE_PROFILE_LABELS[profileKey]}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label>
                 Background width
                 <input
@@ -1461,27 +1677,43 @@ export default function LoginContent() {
                   onChange={(event) => setLayoutVarValue("--login-bg-pos-y", `${event.target.value}%`)}
                 />
               </label>
-              <label>
-                Phone text boost (%)
-                <input
-                  type="range"
-                  min={0}
-                  max={200}
-                  step={1}
-                  value={Math.round(phoneTextBoost)}
-                  onChange={(event) => {
-                    const boost = Number(event.target.value);
-                    const nextScale = clamp(safePhonePanelScaleBase * (1 + boost / 100), 0.6, 3);
-                    setLayoutVarValue("--login-phone-text-scale", nextScale.toFixed(2));
-                  }}
-                />
-              </label>
+              {isPhoneLayout && (
+                <label>
+                  Phone text size (%)
+                  <input
+                    type="range"
+                    min={60}
+                    max={300}
+                    step={1}
+                    value={Math.round(phoneTextScale * 100)}
+                    onChange={(event) => {
+                      const nextScale = clamp(Number(event.target.value) / 100, 0.6, 3);
+                      setLayoutVarValue("--login-phone-text-scale", nextScale.toFixed(2));
+                    }}
+                  />
+                </label>
+              )}
+              {isIpadLayout && (
+                <label>
+                  iPad text size (rem)
+                  <input
+                    type="range"
+                    min={0.7}
+                    max={2.4}
+                    step={0.02}
+                    value={ipadTextSize}
+                    onChange={(event) =>
+                      setLayoutVarValue("--login-ipad-text-size", `${Number(event.target.value).toFixed(2)}rem`)
+                    }
+                  />
+                </label>
+              )}
               <label>
                 Popup height
                 <input
                   type="range"
                   min={5}
-                  max={95}
+                  max={220}
                   value={Math.round(popupHeight)}
                   onChange={(event) => setLayoutVarValue("--login-popup-height", `${event.target.value}%`)}
                 />

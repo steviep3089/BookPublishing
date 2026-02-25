@@ -54,7 +54,7 @@ type StageRect = {
   height: number;
 };
 
-type LiveInsertBounds = {
+type PageBounds = {
   left: StageRect | null;
   right: StageRect | null;
 };
@@ -116,49 +116,23 @@ function toVw(value: number) {
   return `${value.toFixed(2)}vw`;
 }
 
-const INSERT_X_MIN = -30;
-const INSERT_X_MAX = 130;
-const INSERT_TOP_MIN = -30;
-const INSERT_TOP_MAX = 130;
+const INSERT_X_MIN = -150;
+const INSERT_X_MAX = 250;
+const PAGE_INSERT_X_MIN = INSERT_X_MIN * 2;
+const PAGE_INSERT_X_MAX = INSERT_X_MAX * 2;
+const INSERT_TOP_MIN = -150;
+const INSERT_TOP_MAX = 300;
 const INSERT_WIDTH_MIN = 8;
-const INSERT_WIDTH_MAX = 90;
+const INSERT_WIDTH_MAX = 100;
 const INSERT_HEIGHT_MIN = 8;
-const INSERT_HEIGHT_MAX = 80;
-
-function clampLeftCenter(center: number, width: number) {
-  const minCenter = INSERT_X_MIN + width / 2;
-  const maxCenter = INSERT_X_MAX - width / 2;
-  return clamp(center, minCenter, maxCenter);
-}
-
-function clampRightCenter(center: number, width: number) {
-  const minCenter = INSERT_X_MIN + width / 2;
-  const maxCenter = INSERT_X_MAX - width / 2;
-  return clamp(center, minCenter, maxCenter);
-}
-
-function maxLeftWidthForCenter(center: number) {
-  return Math.max(8, Math.min(center * 2, (50 - center) * 2));
-}
-
-function maxRightWidthForCenter(center: number) {
-  return Math.max(8, Math.min((center - 50) * 2, (100 - center) * 2));
-}
+const INSERT_HEIGHT_MAX = 220;
 
 function maxLeftWidthForStart(start: number) {
-  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, (PAGE_INSERT_X_MAX - start) / 2));
 }
 
 function maxRightWidthForStart(start: number) {
-  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, INSERT_X_MAX - start));
-}
-
-function leftCenterFromVars(leftLeft: number, leftWidth: number) {
-  return leftLeft / 2 + leftWidth / 2;
-}
-
-function rightCenterFromVars(rightLeft: number, rightWidth: number) {
-  return 50 + rightLeft / 2 + rightWidth / 2;
+  return Math.max(INSERT_WIDTH_MIN, Math.min(INSERT_WIDTH_MAX, (PAGE_INSERT_X_MAX - start) / 2));
 }
 
 function stageSizeForProfile(profile: DeviceProfileKey) {
@@ -193,20 +167,21 @@ export default function DeviceLayoutEditor() {
   const [showGuides, setShowGuides] = useState(true);
   const [snapToGuides, setSnapToGuides] = useState(false);
   const [desktopViewport, setDesktopViewport] = useState({ width: 1440, height: 900 });
+  const [desktopPreviewScale, setDesktopPreviewScale] = useState(1);
   const [phoneTextScaleBase, setPhoneTextScaleBase] = useState(1);
-  const [desktopTextScaleBase, setDesktopTextScaleBase] = useState(1);
   const [previewBounds, setPreviewBounds] = useState<PreviewBounds>({
     left: 0,
     top: 0,
     width: 100,
     height: 100,
   });
-  const [liveInsertBounds, setLiveInsertBounds] = useState<LiveInsertBounds>({
+  const [pageBounds, setPageBounds] = useState<PageBounds>({
     left: null,
     right: null,
   });
   const stageRef = useRef<HTMLDivElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const appliedPreviewVarKeysRef = useRef<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -227,9 +202,6 @@ export default function DeviceLayoutEditor() {
         setVars(nextVars);
         if (profile.startsWith("iphone-")) {
           setPhoneTextScaleBase(clamp(parseUnitless(nextVars["--login-phone-text-scale"], 1), 0.6, 3));
-        }
-        if (profile === "desktop") {
-          setDesktopTextScaleBase(clamp(parseUnitless(nextVars["--login-desktop-text-scale"], 1), 0.6, 3));
         }
         if (payload.warning) {
           setStatus(`Loaded defaults (${payload.warning}).`);
@@ -268,6 +240,31 @@ export default function DeviceLayoutEditor() {
     return () => window.removeEventListener("resize", syncDesktopViewport);
   }, []);
 
+  useEffect(() => {
+    if (profile !== "desktop") {
+      setDesktopPreviewScale(1);
+      return;
+    }
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const updateScale = () => {
+      const rect = stage.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const scale = Math.min(rect.width / desktopViewport.width, rect.height / desktopViewport.height);
+      setDesktopPreviewScale((current) => (Math.abs(current - scale) < 0.002 ? current : scale));
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(stage);
+    window.addEventListener("resize", updateScale);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateScale);
+    };
+  }, [desktopViewport.height, desktopViewport.width, profile]);
+
   const isPhoneProfile = profile.startsWith("iphone-");
   const isIpadProfile = profile.startsWith("ipad-");
   const isDesktopProfile = profile === "desktop";
@@ -276,6 +273,15 @@ export default function DeviceLayoutEditor() {
   const previewSrc = useMemo(() => {
     return `/login?previewProfile=${profile}&previewMode=1${loginModeQuery(previewAuthMode)}`;
   }, [previewAuthMode, profile]);
+  const desktopFrameStyle =
+    profile === "desktop"
+      ? ({
+          width: `${desktopViewport.width}px`,
+          height: `${desktopViewport.height}px`,
+          transform: `scale(${desktopPreviewScale})`,
+          transformOrigin: "top left",
+        } satisfies React.CSSProperties)
+      : undefined;
 
   const leftLeft = parsePercent(vars["--login-left-left"], isPhoneProfile ? 31 : 24);
   const leftTop = parsePercent(vars["--login-left-top"], isPhoneProfile ? 43 : 36);
@@ -304,17 +310,15 @@ export default function DeviceLayoutEditor() {
   const phoneTextScale = parseUnitless(vars["--login-phone-text-scale"], 1);
   const ipadTextSize = parseRem(vars["--login-ipad-text-size"], profile === "ipad-portrait" ? 1.16 : 1);
   const safePhoneTextScaleBase = clamp(phoneTextScaleBase, 0.6, 3);
-  const safeDesktopTextScaleBase = clamp(desktopTextScaleBase, 0.6, 3);
   const phoneTextBoost = Math.max(0, ((phoneTextScale / safePhoneTextScaleBase) - 1) * 100);
-  const desktopTextBoost = Math.max(0, ((desktopTextScale / safeDesktopTextScaleBase) - 1) * 100);
 
   const safeLeftWidth = clamp(leftWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
   const safeRightWidth = clamp(rightWidth, INSERT_WIDTH_MIN, INSERT_WIDTH_MAX);
   const safeLeftHeight = clamp(leftHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
   const safeRightHeight = clamp(rightHeight, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX);
 
-  const safeLeftStart = clamp(leftLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeLeftWidth);
-  const safeRightStart = clamp(50 + rightLeft / 2, INSERT_X_MIN, INSERT_X_MAX - safeRightWidth);
+  const safeLeftPageStart = clamp(leftLeft, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeLeftWidth * 2);
+  const safeRightPageStart = clamp(rightLeft, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeRightWidth * 2);
   const safeLeftTop = clamp(leftTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightTop = clamp(rightTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
   const safeRightModeTop = clamp(rightModeTop, INSERT_TOP_MIN, INSERT_TOP_MAX);
@@ -333,11 +337,11 @@ export default function DeviceLayoutEditor() {
   useEffect(() => {
     const nextValues: Record<string, string> = {};
 
-    if (Math.abs(leftLeft / 2 - safeLeftStart) > 0.01) {
-      nextValues["--login-left-left"] = toPercent(safeLeftStart * 2);
+    if (Math.abs(leftLeft - safeLeftPageStart) > 0.01) {
+      nextValues["--login-left-left"] = toPercent(safeLeftPageStart);
     }
-    if (Math.abs(rightLeft / 2 - (safeRightStart - 50)) > 0.01) {
-      nextValues["--login-right-left"] = toPercent((safeRightStart - 50) * 2);
+    if (Math.abs(rightLeft - safeRightPageStart) > 0.01) {
+      nextValues["--login-right-left"] = toPercent(safeRightPageStart);
     }
     if (Math.abs(leftWidth - safeLeftWidth) > 0.01) {
       nextValues["--login-left-width"] = toPercent(safeLeftWidth);
@@ -375,11 +379,11 @@ export default function DeviceLayoutEditor() {
     rightTop,
     rightWidth,
     safeLeftHeight,
-    safeLeftStart,
+    safeLeftPageStart,
     safeLeftTop,
     safeLeftWidth,
     safeRightHeight,
-    safeRightStart,
+    safeRightPageStart,
     safeRightTop,
     safeRightModeTop,
     safeRightWidth,
@@ -415,9 +419,25 @@ export default function DeviceLayoutEditor() {
     }
     const rect = stageRef.current.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const useBookSpace = target === "left" || target === "left-size" || target === "right" || target === "right-size";
-    const activeWidth = useBookSpace ? (rect.width * previewBounds.width) / 100 : rect.width;
-    const activeHeight = useBookSpace ? (rect.height * previewBounds.height) / 100 : rect.height;
+    let activeWidth = rect.width;
+    let activeHeight = rect.height;
+    if (target === "left" || target === "left-size" || target === "right" || target === "right-size") {
+      const page =
+        target === "left" || target === "left-size"
+          ? pageBounds.left
+          : target === "right" || target === "right-size"
+            ? pageBounds.right
+            : null;
+      if (page && page.width > 0 && page.height > 0) {
+        activeWidth = (rect.width * page.width) / 100;
+        activeHeight = (rect.height * page.height) / 100;
+      } else {
+        const bookWidth = (rect.width * previewBounds.width) / 100;
+        const bookHeight = (rect.height * previewBounds.height) / 100;
+        activeWidth = bookWidth > 0 ? bookWidth / 2 : rect.width / 2;
+        activeHeight = bookHeight > 0 ? bookHeight : rect.height;
+      }
+    }
     if (!activeWidth || !activeHeight) return;
 
     setSelectedTarget(boxTargetForDragTarget(target));
@@ -428,11 +448,11 @@ export default function DeviceLayoutEditor() {
       startClientY: event.clientY,
       stageWidth: activeWidth,
       stageHeight: activeHeight,
-      leftX: safeLeftStart * 2,
+      leftX: safeLeftPageStart,
       leftY: safeLeftTop,
       leftW: safeLeftWidth,
       leftH: safeLeftHeight,
-      rightX: (safeRightStart - 50) * 2,
+      rightX: safeRightPageStart,
       rightY: safeRightModeTop,
       rightModeY: safeRightModeTop,
       rightW: safeRightWidth,
@@ -456,61 +476,57 @@ export default function DeviceLayoutEditor() {
       const deltaYPercent = ((event.clientY - activeDrag.startClientY) / activeDrag.stageHeight) * 100;
 
       if (activeDrag.target === "left") {
-        const currentCenter = leftCenterFromVars(activeDrag.leftX, activeDrag.leftW);
-        const nextCenterRaw = clampLeftCenter(currentCenter + deltaXPercent, activeDrag.leftW);
-        const nextCenter = clampLeftCenter(snapValue(nextCenterRaw, [12.5, 25, 37.5]), activeDrag.leftW);
-        const nextLeftStart = nextCenter - activeDrag.leftW / 2;
+        const nextLeftStart = snapValue(
+          clamp(activeDrag.leftX + deltaXPercent, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - activeDrag.leftW * 2),
+          [10, 20, 30, 40, 50]
+        );
         const nextTop = snapValue(
           clamp(activeDrag.leftY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX),
           [10, 20, 30, 40, 50, 60, 70]
         );
         setVarValues({
-          "--login-left-left": toPercent(nextLeftStart * 2),
+          "--login-left-left": toPercent(nextLeftStart),
           "--login-left-top": toPercent(nextTop),
         });
         return;
       }
 
-        if (activeDrag.target === "left-size") {
-          const leftStart = activeDrag.leftX / 2;
-          const maxWidth = maxLeftWidthForStart(leftStart);
-          setVarValues({
-            "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
-            "--login-left-height": toPercent(
-              clamp(activeDrag.leftH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)
-            ),
-          });
-          return;
-        }
+      if (activeDrag.target === "left-size") {
+        const leftStart = activeDrag.leftX;
+        const maxWidth = maxLeftWidthForStart(leftStart);
+        setVarValues({
+          "--login-left-width": toPercent(clamp(activeDrag.leftW + deltaXPercent / 2, INSERT_WIDTH_MIN, maxWidth)),
+          "--login-left-height": toPercent(clamp(activeDrag.leftH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)),
+        });
+        return;
+      }
 
       if (activeDrag.target === "right") {
         const newTop = snapValue(
           clamp(activeDrag.rightY + deltaYPercent, INSERT_TOP_MIN, INSERT_TOP_MAX),
           [10, 20, 30, 40, 50, 60, 70]
         );
-        const currentCenter = rightCenterFromVars(activeDrag.rightX, activeDrag.rightW);
-        const nextCenterRaw = clampRightCenter(currentCenter + deltaXPercent, activeDrag.rightW);
-        const nextCenter = clampRightCenter(snapValue(nextCenterRaw, [62.5, 75, 87.5]), activeDrag.rightW);
-        const nextRightStart = nextCenter - activeDrag.rightW / 2;
+        const nextRightStart = snapValue(
+          clamp(activeDrag.rightX + deltaXPercent, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - activeDrag.rightW * 2),
+          [10, 20, 30, 40, 50]
+        );
         setVarValues({
-          "--login-right-left": toPercent((nextRightStart - 50) * 2),
+          "--login-right-left": toPercent(nextRightStart),
           "--login-right-top": toPercent(newTop),
           "--login-right-mode-top": toPercent(newTop),
         });
         return;
       }
 
-        if (activeDrag.target === "right-size") {
-          const rightStart = 50 + activeDrag.rightX / 2;
-          const maxWidth = maxRightWidthForStart(rightStart);
-          setVarValues({
-            "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent, INSERT_WIDTH_MIN, maxWidth)),
-            "--login-right-height": toPercent(
-              clamp(activeDrag.rightH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)
-            ),
-          });
-          return;
-        }
+      if (activeDrag.target === "right-size") {
+        const rightStart = activeDrag.rightX;
+        const maxWidth = maxRightWidthForStart(rightStart);
+        setVarValues({
+          "--login-right-width": toPercent(clamp(activeDrag.rightW + deltaXPercent / 2, INSERT_WIDTH_MIN, maxWidth)),
+          "--login-right-height": toPercent(clamp(activeDrag.rightH + deltaYPercent, INSERT_HEIGHT_MIN, INSERT_HEIGHT_MAX)),
+        });
+        return;
+      }
 
       if (activeDrag.target === "popup") {
         const nextPopupLeft = snapValue(clamp(activeDrag.popupX + deltaXPercent, 18, 92), [25, 50, 75]);
@@ -577,11 +593,10 @@ export default function DeviceLayoutEditor() {
       event.preventDefault();
 
       if (selectedTarget === "left") {
-        const center = clampLeftCenter(leftCenterFromVars(safeLeftStart * 2, safeLeftWidth) + dx, safeLeftWidth);
-        const leftStart = center - safeLeftWidth / 2;
+        const leftStart = clamp(safeLeftPageStart + dx, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeLeftWidth * 2);
         const top = clamp(safeLeftTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
         setVarValues({
-          "--login-left-left": toPercent(leftStart * 2),
+          "--login-left-left": toPercent(leftStart),
           "--login-left-top": toPercent(top),
         });
         return;
@@ -589,13 +604,9 @@ export default function DeviceLayoutEditor() {
 
       if (selectedTarget === "right") {
         const top = clamp(safeRightModeTop + dy, INSERT_TOP_MIN, INSERT_TOP_MAX);
-        const center = clampRightCenter(
-          rightCenterFromVars((safeRightStart - 50) * 2, safeRightWidth) + dx,
-          safeRightWidth
-        );
-        const rightStart = center - safeRightWidth / 2;
+        const rightStart = clamp(safeRightPageStart + dx, PAGE_INSERT_X_MIN, PAGE_INSERT_X_MAX - safeRightWidth * 2);
         setVarValues({
-          "--login-right-left": toPercent((rightStart - 50) * 2),
+          "--login-right-left": toPercent(rightStart),
           "--login-right-top": toPercent(top),
           "--login-right-mode-top": toPercent(top),
         });
@@ -625,10 +636,10 @@ export default function DeviceLayoutEditor() {
     rightTop,
     rightWidth,
     saving,
-    safeLeftStart,
+    safeLeftPageStart,
     safeLeftTop,
     safeLeftWidth,
-    safeRightStart,
+    safeRightPageStart,
     safeRightModeTop,
     safeRightWidth,
     selectedTarget,
@@ -659,11 +670,6 @@ export default function DeviceLayoutEditor() {
     }
   }
 
-  // While dragging/resizing, keep overlays driven directly by vars so
-  // periodic iframe re-measurement cannot cause visual jumps.
-  const leftBoxFromDom = dragState ? null : liveInsertBounds.left;
-  const rightBoxFromDom = dragState ? null : liveInsertBounds.right;
-
   const popupBoxStyle = {
     left: `${popupLeft}%`,
     top: `${popupTop}%`,
@@ -671,29 +677,29 @@ export default function DeviceLayoutEditor() {
     height: `${popupHeight}%`,
   };
 
-  const leftBoxStageStyle = leftBoxFromDom
+  const leftBoxStageStyle = pageBounds.left
     ? {
-        left: `${leftBoxFromDom.left}%`,
-        top: `${leftBoxFromDom.top}%`,
-        width: `${leftBoxFromDom.width}%`,
-        height: `${leftBoxFromDom.height}%`,
+        left: `${pageBounds.left.left + (pageBounds.left.width * safeLeftPageStart) / 100}%`,
+        top: `${pageBounds.left.top + (pageBounds.left.height * safeLeftTop) / 100}%`,
+        width: `${(pageBounds.left.width * (safeLeftWidth * 2)) / 100}%`,
+        height: `${(pageBounds.left.height * safeLeftHeight) / 100}%`,
       }
     : {
-        left: `${previewBounds.left + (previewBounds.width * safeLeftStart) / 100}%`,
+        left: `${previewBounds.left + (previewBounds.width * (safeLeftPageStart / 2)) / 100}%`,
         top: `${previewBounds.top + (previewBounds.height * safeLeftTop) / 100}%`,
         width: `${(previewBounds.width * safeLeftWidth) / 100}%`,
         height: `${(previewBounds.height * safeLeftHeight) / 100}%`,
       };
 
-  const rightBoxStageStyle = rightBoxFromDom
+  const rightBoxStageStyle = pageBounds.right
     ? {
-        left: `${rightBoxFromDom.left}%`,
-        top: `${rightBoxFromDom.top}%`,
-        width: `${rightBoxFromDom.width}%`,
-        height: `${rightBoxFromDom.height}%`,
+        left: `${pageBounds.right.left + (pageBounds.right.width * safeRightPageStart) / 100}%`,
+        top: `${pageBounds.right.top + (pageBounds.right.height * safeRightModeTop) / 100}%`,
+        width: `${(pageBounds.right.width * (safeRightWidth * 2)) / 100}%`,
+        height: `${(pageBounds.right.height * safeRightHeight) / 100}%`,
       }
     : {
-        left: `${previewBounds.left + (previewBounds.width * safeRightStart) / 100}%`,
+        left: `${previewBounds.left + (previewBounds.width * (50 + safeRightPageStart / 2)) / 100}%`,
         top: `${previewBounds.top + (previewBounds.height * safeRightModeTop) / 100}%`,
         width: `${(previewBounds.width * safeRightWidth) / 100}%`,
         height: `${(previewBounds.height * safeRightHeight) / 100}%`,
@@ -741,14 +747,41 @@ export default function DeviceLayoutEditor() {
     const bookRect = book.getBoundingClientRect();
     if (!heroRect.width || !heroRect.height || !bookRect.width || !bookRect.height) return;
 
-    const nextBounds: PreviewBounds = {
-      // On phone profiles the book can be wider than the viewport. Keep that full ratio
-      // so drag math stays aligned with the real rendered layout.
-      left: clamp(((bookRect.left - heroRect.left) / heroRect.width) * 100, -250, 250),
-      top: clamp(((bookRect.top - heroRect.top) / heroRect.height) * 100, 0, 100),
-      width: clamp((bookRect.width / heroRect.width) * 100, 20, 400),
-      height: clamp((bookRect.height / heroRect.height) * 100, 20, 100),
-    };
+    const leftPage = frameDocument.querySelector(".login-page-left") as HTMLElement | null;
+    const rightPage = frameDocument.querySelector(".login-page-right") as HTMLElement | null;
+
+    const nextPageBounds: PageBounds = { left: null, right: null };
+    let nextBounds: PreviewBounds;
+
+    if (leftPage && rightPage) {
+      const leftRect = leftPage.getBoundingClientRect();
+      const rightRect = rightPage.getBoundingClientRect();
+      if (leftRect.width > 0 && leftRect.height > 0) {
+        nextPageBounds.left = rectToStageRect(leftRect, heroRect);
+      }
+      if (rightRect.width > 0 && rightRect.height > 0) {
+        nextPageBounds.right = rectToStageRect(rightRect, heroRect);
+      }
+
+      const unionLeft = Math.min(leftRect.left, rightRect.left);
+      const unionTop = Math.min(leftRect.top, rightRect.top);
+      const unionRight = Math.max(leftRect.right, rightRect.right);
+      const unionBottom = Math.max(leftRect.bottom, rightRect.bottom);
+      nextBounds = {
+        left: clamp(((unionLeft - heroRect.left) / heroRect.width) * 100, -250, 250),
+        top: clamp(((unionTop - heroRect.top) / heroRect.height) * 100, 0, 100),
+        width: clamp(((unionRight - unionLeft) / heroRect.width) * 100, 20, 400),
+        height: clamp(((unionBottom - unionTop) / heroRect.height) * 100, 20, 100),
+      };
+    } else {
+      nextBounds = {
+        // Fallback when pages are not available yet.
+        left: clamp(((bookRect.left - heroRect.left) / heroRect.width) * 100, -250, 250),
+        top: clamp(((bookRect.top - heroRect.top) / heroRect.height) * 100, 0, 100),
+        width: clamp((bookRect.width / heroRect.width) * 100, 20, 400),
+        height: clamp((bookRect.height / heroRect.height) * 100, 20, 100),
+      };
+    }
 
     setPreviewBounds((current) => {
       const delta =
@@ -760,38 +793,37 @@ export default function DeviceLayoutEditor() {
       return nextBounds;
     });
 
-    const leftInsert = frameDocument.querySelector(".login-left-insert") as HTMLElement | null;
-    const rightInsert = frameDocument.querySelector(".login-right-insert") as HTMLElement | null;
-    const nextInsertBounds: LiveInsertBounds = { left: null, right: null };
-
-    if (leftInsert) {
-      const leftRect = leftInsert.getBoundingClientRect();
-      if (leftRect.width > 0 && leftRect.height > 0) {
-        nextInsertBounds.left = rectToStageRect(leftRect, heroRect);
-      }
-    }
-
-    if (rightInsert) {
-      const rightRect = rightInsert.getBoundingClientRect();
-      if (rightRect.width > 0 && rightRect.height > 0) {
-        nextInsertBounds.right = rectToStageRect(rightRect, heroRect);
-      }
-    }
-
-    setLiveInsertBounds((current) => {
-      const leftDelta = rectDelta(current.left, nextInsertBounds.left);
-      const rightDelta = rectDelta(current.right, nextInsertBounds.right);
+    setPageBounds((current) => {
+      const leftDelta = rectDelta(current.left, nextPageBounds.left);
+      const rightDelta = rectDelta(current.right, nextPageBounds.right);
       if (leftDelta < 0.15 && rightDelta < 0.15) return current;
-      return nextInsertBounds;
+      return nextPageBounds;
     });
   }
 
-  const leftLabel = `Left edge ${safeLeftStart.toFixed(1)}%, ${safeLeftTop.toFixed(1)}%`;
-  const rightLabel = `Right edge ${safeRightStart.toFixed(1)}%, ${safeRightModeTop.toFixed(1)}%`;
+  const leftLabel = `Left edge ${(safeLeftPageStart / 2).toFixed(1)}%, ${safeLeftTop.toFixed(1)}%`;
+  const rightLabel = `Right edge ${(50 + safeRightPageStart / 2).toFixed(1)}%, ${safeRightModeTop.toFixed(1)}%`;
   const popupLabel = `Popup ${popupLeft.toFixed(1)}%, ${popupTop.toFixed(1)}%`;
 
   function postPreviewVars() {
     const target = previewFrameRef.current?.contentWindow;
+    const frameDoc = previewFrameRef.current?.contentDocument;
+
+    if (frameDoc) {
+      const hero = frameDoc.querySelector(".login-hero") as HTMLElement | null;
+      if (hero) {
+        for (const key of appliedPreviewVarKeysRef.current) {
+          if (!(key in vars)) {
+            hero.style.removeProperty(key);
+          }
+        }
+        for (const [key, value] of Object.entries(vars)) {
+          hero.style.setProperty(key, value);
+        }
+        appliedPreviewVarKeysRef.current = Object.keys(vars);
+      }
+    }
+
     if (!target) return;
     target.postMessage(
       {
@@ -838,10 +870,6 @@ export default function DeviceLayoutEditor() {
       if (timer !== null) window.clearInterval(timer);
     };
   }, [dragState, profile, reloadToken]);
-
-  useEffect(() => {
-    setLiveInsertBounds({ left: null, right: null });
-  }, [profile, reloadToken, previewAuthMode]);
 
   return (
     <section className="device-layout-shell">
@@ -975,24 +1003,20 @@ export default function DeviceLayoutEditor() {
 
         {isDesktopProfile && (
           <label className="bookcase-editor-label">
-            <span>Desktop Text Boost (%)</span>
+            <span>Desktop Text Scale</span>
             <input
               type="range"
-              min={0}
-              max={200}
-              step={1}
-              value={Math.round(desktopTextBoost)}
-              onChange={(event) => {
-                const boost = Number(event.target.value);
-                const nextScale = clamp(safeDesktopTextScaleBase * (1 + boost / 100), 0.6, 3);
-                setVarValue("--login-desktop-text-scale", nextScale.toFixed(2));
-              }}
+              min={0.6}
+              max={4}
+              step={0.05}
+              value={desktopTextScale}
+              onChange={(event) => setVarValue("--login-desktop-text-scale", Number(event.target.value).toFixed(2))}
               disabled={loading || saving}
             />
           </label>
         )}
 
-        {isPhoneProfile && (
+        {(isPhoneProfile || isIpadProfile) && (
           <>
             <label className="bookcase-editor-label">
               <span>Left Insert Width (%)</span>
@@ -1003,7 +1027,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(leftWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxLeftWidthForStart(safeLeftStart);
+                  const maxWidth = maxLeftWidthForStart(safeLeftPageStart);
                   setVarValue("--login-left-width", `${clamp(candidate, INSERT_WIDTH_MIN, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
@@ -1031,7 +1055,7 @@ export default function DeviceLayoutEditor() {
                 value={Math.round(rightWidth)}
                 onChange={(event) => {
                   const candidate = Number(event.target.value);
-                  const maxWidth = maxRightWidthForStart(safeRightStart);
+                  const maxWidth = maxRightWidthForStart(safeRightPageStart);
                   setVarValue("--login-right-width", `${clamp(candidate, INSERT_WIDTH_MIN, maxWidth).toFixed(2)}%`);
                 }}
                 disabled={loading || saving}
@@ -1140,6 +1164,7 @@ export default function DeviceLayoutEditor() {
             src={previewSrc}
             title={`${DEVICE_PROFILE_LABELS[profile]} Preview`}
             className="device-layout-stage-frame"
+            style={desktopFrameStyle}
             onLoad={postPreviewVars}
           />
           <div className={`device-layout-guides ${showGuides ? "" : "device-layout-guides-hidden"}`} aria-hidden="true">
@@ -1188,7 +1213,7 @@ export default function DeviceLayoutEditor() {
             />
           </button>
 
-          {isPhoneProfile && (
+          {(
             <button
               type="button"
               className={`device-drag-box device-drag-popup ${selectedTarget === "popup" ? "is-selected" : ""}`}
