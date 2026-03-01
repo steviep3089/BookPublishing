@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { supabaseService } from "@/lib/supabase/service";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getUserRole } from "@/lib/supabase/roles";
+import { isBookcaseShelfNavProfileKey, type BookcaseShelfNavProfileKey } from "@/lib/bookcase/shelfNavDeviceLayout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const TABLE_NAME = "bookcase_book_layouts";
+const PROFILE_TABLE_NAME = "device_layout_profiles";
+const PROFILE_PREFIX = "bookcase-books:";
 
 type BookItem = {
   key: string;
@@ -437,13 +440,18 @@ function getPageKey(url: URL) {
   return (url.searchParams.get("page") || "").trim().toLowerCase();
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const pageKey = getPageKey(url);
-  if (!pageKey) {
-    return NextResponse.json({ error: "Missing page query parameter" }, { status: 400 });
-  }
+function getProfileQuery(url: URL): BookcaseShelfNavProfileKey | null | "__invalid__" {
+  const raw = (url.searchParams.get("profile") || "").trim().toLowerCase();
+  if (!raw) return null;
+  if (!isBookcaseShelfNavProfileKey(raw)) return "__invalid__";
+  return raw;
+}
 
+function toProfileKey(pageKey: string, profile: BookcaseShelfNavProfileKey) {
+  return `${PROFILE_PREFIX}${pageKey}:${profile}`;
+}
+
+async function loadLegacyLayout(pageKey: string) {
   const { data, error } = await supabaseService
     .from(TABLE_NAME)
     .select("page_key, books, front_templates")
@@ -464,35 +472,77 @@ export async function GET(req: Request) {
 
       if (!legacy.error) {
         const legacyRow = legacy.data && typeof legacy.data === "object" ? (legacy.data as Record<string, unknown>) : null;
-        return NextResponse.json({
+        return {
           layout: {
             books: sanitizeBooks(legacyRow?.books, pageKey),
             frontTemplates: sanitizeFrontTemplates(null),
           },
           source: legacy.data ? "supabase-legacy" : "default",
           warning: "front_templates column missing; run SQL migration to enable shared front positions",
-        });
+        };
       }
     }
 
-    return NextResponse.json(
-      {
-        layout: { books: pageDefaults(pageKey), frontTemplates: sanitizeFrontTemplates(null) },
-        source: "default",
-        warning: error.message,
-      },
-      { status: 200 }
-    );
+    return {
+      layout: { books: pageDefaults(pageKey), frontTemplates: sanitizeFrontTemplates(null) },
+      source: "default",
+      warning: error.message,
+    };
   }
 
   const row = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
-  return NextResponse.json({
+  return {
     layout: {
       books: sanitizeBooks(row?.books, pageKey),
       frontTemplates: sanitizeFrontTemplates(row?.front_templates),
     },
     source: data ? "supabase" : "default",
-  });
+  };
+}
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const pageKey = getPageKey(url);
+  const profile = getProfileQuery(url);
+  if (!pageKey) {
+    return NextResponse.json({ error: "Missing page query parameter" }, { status: 400 });
+  }
+  if (profile === "__invalid__") {
+    return NextResponse.json({ error: "Invalid profile" }, { status: 400 });
+  }
+
+  if (profile) {
+    const { data, error } = await supabaseService
+      .from(PROFILE_TABLE_NAME)
+      .select("profile_key, layout")
+      .eq("profile_key", toProfileKey(pageKey, profile))
+      .maybeSingle();
+
+    if (!error && data) {
+      const row = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+      const rawLayout =
+        row?.layout && typeof row.layout === "object" ? (row.layout as Record<string, unknown>) : null;
+      return NextResponse.json({
+        profile,
+        layout: {
+          books: sanitizeBooks(rawLayout?.books, pageKey),
+          frontTemplates: sanitizeFrontTemplates(rawLayout?.frontTemplates),
+        },
+        source: "supabase-profile",
+      });
+    }
+
+    const legacy = await loadLegacyLayout(pageKey);
+    return NextResponse.json({
+      profile,
+      ...legacy,
+      source: `${legacy.source}-fallback`,
+      warning: error ? `Profile load failed (${error.message}). Using fallback.` : legacy.warning,
+    });
+  }
+
+  const legacy = await loadLegacyLayout(pageKey);
+  return NextResponse.json(legacy);
 }
 
 export async function POST(req: Request) {
@@ -523,8 +573,15 @@ export async function POST(req: Request) {
   const payload = body as Record<string, unknown>;
   const pageKeyRaw = typeof payload.pageKey === "string" ? payload.pageKey.trim() : "";
   const pageKey = pageKeyRaw.toLowerCase();
+  const profileRaw = typeof payload.profile === "string" ? payload.profile.trim().toLowerCase() : "";
+  const profile: BookcaseShelfNavProfileKey | null = profileRaw
+    ? (isBookcaseShelfNavProfileKey(profileRaw) ? profileRaw : null)
+    : null;
   if (!pageKey) {
     return NextResponse.json({ error: "pageKey is required" }, { status: 400 });
+  }
+  if (profileRaw && !profile) {
+    return NextResponse.json({ error: "Invalid profile" }, { status: 400 });
   }
 
   const books = sanitizeBooks(payload.books, pageKey);
@@ -535,6 +592,21 @@ export async function POST(req: Request) {
       { error: "Each book needs a target path starting with '/'" },
       { status: 400 }
     );
+  }
+
+  if (profile) {
+    const { error } = await supabaseService.from(PROFILE_TABLE_NAME).upsert(
+      {
+        profile_key: toProfileKey(pageKey, profile),
+        layout: { books, frontTemplates },
+        updated_by: user.id,
+      },
+      { onConflict: "profile_key" }
+    );
+    if (error) {
+      return NextResponse.json({ error: `Save failed: ${error.message}` }, { status: 500 });
+    }
+    return NextResponse.json({ saved: true, profile, layout: { books, frontTemplates } });
   }
 
   let { error } = await supabaseService.from(TABLE_NAME).upsert(

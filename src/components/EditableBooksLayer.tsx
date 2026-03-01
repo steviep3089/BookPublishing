@@ -1,9 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { bookcaseLabelForKey, normalizeBookcaseKey } from "@/lib/bookcase/pageKey";
+import {
+  BOOKCASE_SHELF_NAV_PROFILE_KEYS,
+  BOOKCASE_SHELF_NAV_PROFILE_LABELS,
+  isBookcaseShelfNavProfileKey,
+  type BookcaseShelfNavProfileKey,
+} from "@/lib/bookcase/shelfNavDeviceLayout";
 
 type BookItem = {
   key: string;
@@ -186,9 +200,41 @@ type AdminLogoInteraction = {
   };
 };
 
+type NavDragState = {
+  target: "back" | "next";
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  startBackX: number;
+  startBackY: number;
+  startNextX: number;
+  startNextY: number;
+};
+
 type Props = {
   pageKey: string;
   isAdmin: boolean;
+};
+
+type ShelfNavApiResult = {
+  profile?: BookcaseShelfNavProfileKey;
+  vars?: Record<string, string>;
+  source?: string;
+  warning?: string;
+  error?: string;
+};
+
+type BookLayoutApiResult = {
+  profile?: BookcaseShelfNavProfileKey;
+  layout?: {
+    books?: unknown;
+    frontTemplates?: unknown;
+  };
+  source?: string;
+  warning?: string;
+  error?: string;
 };
 
 type FrontViewport = {
@@ -276,6 +322,17 @@ function titleColorValue(value: BookItem["titleColor"]) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function parsePercent(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const numeric = Number.parseFloat(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return numeric;
+}
+
+function toPercent(value: number) {
+  return `${value.toFixed(2)}%`;
 }
 
 function frontTemplateAspect(template: FrontTemplate) {
@@ -709,8 +766,14 @@ function isSlotPlaceholderLabel(label: string, key: string) {
 }
 
 export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const editMode = isAdmin && searchParams.get("edit") === "1";
+  const previewProfile = searchParams.get("previewProfile");
+  const forcedNavProfile = isBookcaseShelfNavProfileKey(previewProfile || "")
+    ? (previewProfile as BookcaseShelfNavProfileKey)
+    : null;
   const canvasRef = useRef<HTMLDivElement>(null);
   const interactionRef = useRef<Interaction | null>(null);
   const panelInteractionRef = useRef<PanelInteraction | null>(null);
@@ -719,6 +782,13 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
   const coverWindowInteractionRef = useRef<CoverWindowInteraction | null>(null);
   const frontActionInteractionRef = useRef<FrontActionInteraction | null>(null);
   const adminLogoInteractionRef = useRef<AdminLogoInteraction | null>(null);
+  const navDragRef = useRef<NavDragState | null>(null);
+  const scenePanRef = useRef<{
+    startX: number;
+    startY: number;
+    startScrollLeft: number;
+    moved: boolean;
+  } | null>(null);
 
   const [layout, setLayout] = useState<Layout>(() => defaultLayout(pageKey));
   const [draft, setDraft] = useState<Layout>(() => defaultLayout(pageKey));
@@ -742,6 +812,12 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
   } | null>(null);
   const [showFrontTemplate, setShowFrontTemplate] = useState(true);
   const [showBackTemplate, setShowBackTemplate] = useState(true);
+  const [navProfile, setNavProfile] = useState<BookcaseShelfNavProfileKey>("desktop");
+  const [navVars, setNavVars] = useState<Record<string, string>>({});
+  const [navLoading, setNavLoading] = useState(false);
+  const [navSaving, setNavSaving] = useState(false);
+  const [navStatus, setNavStatus] = useState<string | null>(null);
+  const [navReloadToken, setNavReloadToken] = useState(0);
 
   const activeBook = useMemo(() => {
     if (draft.books.length === 0) return null;
@@ -752,6 +828,18 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
     if (!pendingBookKey) return null;
     return draft.books.find((item) => item.key === pendingBookKey) ?? null;
   }, [draft.books, pendingBookKey]);
+
+  const navBackX = parsePercent(navVars["--bookcase-nav-back-x"], 10);
+  const navBackY = parsePercent(navVars["--bookcase-nav-back-y"], 7);
+  const navNextX = parsePercent(navVars["--bookcase-nav-next-x"], 90);
+  const navNextY = parsePercent(navVars["--bookcase-nav-next-y"], 7);
+  const navWidth = parsePercent(navVars["--bookcase-nav-width"], 16);
+
+  const safeNavBackX = clamp(navBackX, 0, 100);
+  const safeNavBackY = clamp(navBackY, 0, 100);
+  const safeNavNextX = clamp(navNextX, 0, 100);
+  const safeNavNextY = clamp(navNextY, 0, 100);
+  const safeNavWidth = clamp(navWidth, 6, 40);
 
   const allTargetPathOptions = useMemo(() => {
     const merged = [...BASE_TARGET_PATH_OPTIONS];
@@ -814,6 +902,28 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
     [previewFrontTemplate, previewFrontType]
   );
 
+  const coverPreviewRect = useMemo(() => {
+    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280;
+    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 720;
+    const baseWidth = previewAnchorRect
+      ? (previewAnchorRect.width * previewFrontTemplate.widthPercent) / 100
+      : viewportWidth * 0.34;
+    const baseHeight = previewAnchorRect
+      ? (previewAnchorRect.height * previewFrontTemplate.heightPercent) / 100
+      : viewportHeight * 0.72;
+    const maxWidth = viewportWidth * 0.9;
+    const maxHeight = viewportHeight * 0.86;
+    const scale = Math.min(1, maxWidth / Math.max(baseWidth, 1), maxHeight / Math.max(baseHeight, 1));
+    return {
+      width: Math.max(220, baseWidth * scale),
+      height: Math.max(260, baseHeight * scale),
+    };
+  }, [
+    previewAnchorRect,
+    previewFrontTemplate.heightPercent,
+    previewFrontTemplate.widthPercent,
+  ]);
+
   useEffect(() => {
     if (!selectedBookForPreview) {
       setPreviewAnchorRect(null);
@@ -853,6 +963,208 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       return { x: clampedX, y: clampedY };
     });
   }, []);
+
+  useEffect(() => {
+    const phonePortraitQuery = window.matchMedia("(max-width: 680px) and (orientation: portrait)");
+    const phoneLandscapeQuery = window.matchMedia("(max-height: 500px) and (orientation: landscape)");
+    const ipadPortraitQuery = window.matchMedia("(max-width: 1024px) and (orientation: portrait)");
+    const ipadLandscapeQuery = window.matchMedia(
+      "(max-width: 1366px) and (orientation: landscape) and (pointer: coarse)"
+    );
+
+    function addMediaChangeListener(query: MediaQueryList, listener: () => void) {
+      if (typeof query.addEventListener === "function") {
+        query.addEventListener("change", listener);
+        return () => query.removeEventListener("change", listener);
+      }
+      query.addListener(listener);
+      return () => query.removeListener(listener);
+    }
+
+    const syncProfile = () => {
+      if (forcedNavProfile) {
+        setNavProfile(forcedNavProfile);
+        return;
+      }
+
+      let nextProfile: BookcaseShelfNavProfileKey = "desktop";
+      if (phonePortraitQuery.matches) {
+        const portraitWidth = Math.max(window.innerWidth || 0, Math.round(window.visualViewport?.width || 0));
+        nextProfile = portraitWidth >= 420 ? "iphone-portrait-max" : "iphone-portrait";
+      } else if (phoneLandscapeQuery.matches) {
+        const landscapeHeight = Math.max(window.innerHeight || 0, Math.round(window.visualViewport?.height || 0));
+        nextProfile = landscapeHeight >= 410 ? "iphone-landscape-max" : "iphone-landscape";
+      } else if (ipadPortraitQuery.matches) {
+        nextProfile = "ipad-portrait";
+      } else if (ipadLandscapeQuery.matches) {
+        nextProfile = "ipad-landscape";
+      }
+
+      setNavProfile(nextProfile);
+    };
+
+    syncProfile();
+
+    if (!forcedNavProfile) {
+      const removePhonePortrait = addMediaChangeListener(phonePortraitQuery, syncProfile);
+      const removePhoneLandscape = addMediaChangeListener(phoneLandscapeQuery, syncProfile);
+      const removeIpadPortrait = addMediaChangeListener(ipadPortraitQuery, syncProfile);
+      const removeIpadLandscape = addMediaChangeListener(ipadLandscapeQuery, syncProfile);
+      window.addEventListener("resize", syncProfile);
+      window.addEventListener("orientationchange", syncProfile);
+      return () => {
+        removePhonePortrait();
+        removePhoneLandscape();
+        removeIpadPortrait();
+        removeIpadLandscape();
+        window.removeEventListener("resize", syncProfile);
+        window.removeEventListener("orientationchange", syncProfile);
+      };
+    }
+    return undefined;
+  }, [forcedNavProfile]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNavLayout() {
+      setNavLoading(true);
+      setNavStatus(null);
+      try {
+        const response = await fetch(`/api/bookcase-shelf-nav-layout?profile=${navProfile}&ts=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const payload = (await response.json()) as ShelfNavApiResult;
+        if (!response.ok) {
+          throw new Error(payload.error || "Unable to load arrow layout.");
+        }
+        if (cancelled) return;
+        setNavVars(payload.vars || {});
+        if (payload.warning) {
+          setNavStatus(`Loaded defaults (${payload.warning}).`);
+        } else if (payload.source === "supabase") {
+          setNavStatus("Arrow layout loaded.");
+        } else {
+          setNavStatus("Arrow defaults loaded.");
+        }
+      } catch (error: unknown) {
+        if (cancelled) return;
+        const message = error instanceof Error ? error.message : "Unable to load arrow layout.";
+        setNavStatus(message);
+      } finally {
+        if (!cancelled) setNavLoading(false);
+      }
+    }
+
+    void loadNavLayout();
+    return () => {
+      cancelled = true;
+    };
+  }, [navProfile, navReloadToken]);
+
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    if (Math.abs(navBackX - safeNavBackX) > 0.01) next["--bookcase-nav-back-x"] = toPercent(safeNavBackX);
+    if (Math.abs(navBackY - safeNavBackY) > 0.01) next["--bookcase-nav-back-y"] = toPercent(safeNavBackY);
+    if (Math.abs(navNextX - safeNavNextX) > 0.01) next["--bookcase-nav-next-x"] = toPercent(safeNavNextX);
+    if (Math.abs(navNextY - safeNavNextY) > 0.01) next["--bookcase-nav-next-y"] = toPercent(safeNavNextY);
+    if (Math.abs(navWidth - safeNavWidth) > 0.01) next["--bookcase-nav-width"] = toPercent(safeNavWidth);
+
+    if (Object.keys(next).length > 0) {
+      setNavVars((current) => ({ ...current, ...next }));
+    }
+  }, [navBackX, navBackY, navNextX, navNextY, navWidth, safeNavBackX, safeNavBackY, safeNavNextX, safeNavNextY, safeNavWidth]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const scene = canvas?.closest(".bookcase-scene.bookcase-scene-empty");
+    const back = scene?.querySelector(".bookcase-nav-sign-back") as HTMLAnchorElement | null;
+    const next = scene?.querySelector(".bookcase-nav-sign-next") as HTMLAnchorElement | null;
+
+    if (!scene || !back || !next) return;
+
+    const applyNavStyle = (node: HTMLAnchorElement, x: number, y: number) => {
+      node.style.position = "absolute";
+      node.style.left = `${x}%`;
+      node.style.right = "auto";
+      node.style.top = `${y}%`;
+      node.style.width = `${safeNavWidth}vw`;
+      node.style.maxWidth = "none";
+      node.style.transform = "translate(-50%, -50%)";
+      node.style.zIndex = "45";
+      node.style.opacity = "1";
+      node.style.visibility = "visible";
+      node.style.pointerEvents = editMode ? "none" : "auto";
+      node.setAttribute("draggable", "false");
+      node.ondragstart = (event) => {
+        event.preventDefault();
+      };
+    };
+
+    applyNavStyle(back, safeNavBackX, safeNavBackY);
+    applyNavStyle(next, safeNavNextX, safeNavNextY);
+  }, [editMode, safeNavBackX, safeNavBackY, safeNavNextX, safeNavNextY, safeNavWidth, pageKey]);
+
+  useEffect(() => {
+    const scene = canvasRef.current?.closest(".bookcase-scene.bookcase-scene-empty") as HTMLElement | null;
+    if (!scene) return;
+    scene.setAttribute("data-books-edit", editMode ? "1" : "0");
+    return () => {
+      scene.removeAttribute("data-books-edit");
+    };
+  }, [editMode, pageKey]);
+
+  useEffect(() => {
+    if (editMode) return;
+
+    const scene = canvasRef.current?.closest(".bookcase-scene.bookcase-scene-empty") as HTMLElement | null;
+    if (!scene) return;
+    const sceneElement = scene;
+
+    function onTouchStart(event: TouchEvent) {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      scenePanRef.current = {
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startScrollLeft: sceneElement.scrollLeft,
+        moved: false,
+      };
+    }
+
+    function onTouchMove(event: TouchEvent) {
+      const state = scenePanRef.current;
+      if (!state || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+
+      const deltaX = touch.clientX - state.startX;
+      const deltaY = touch.clientY - state.startY;
+      if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) return;
+      if (Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+      sceneElement.scrollLeft = state.startScrollLeft - deltaX;
+      state.moved = true;
+      event.preventDefault();
+    }
+
+    function onTouchEnd() {
+      scenePanRef.current = null;
+    }
+
+    sceneElement.addEventListener("touchstart", onTouchStart, { passive: true });
+    sceneElement.addEventListener("touchmove", onTouchMove, { passive: false });
+    sceneElement.addEventListener("touchend", onTouchEnd);
+    sceneElement.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      sceneElement.removeEventListener("touchstart", onTouchStart);
+      sceneElement.removeEventListener("touchmove", onTouchMove);
+      sceneElement.removeEventListener("touchend", onTouchEnd);
+      sceneElement.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [editMode, pageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -896,12 +1208,12 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
     let cancelled = false;
     async function load() {
       try {
-        const response = await fetch(`/api/bookcase-book-layout?page=${pageKey}&ts=${Date.now()}`, {
+        const response = await fetch(`/api/bookcase-book-layout?page=${pageKey}&profile=${navProfile}&ts=${Date.now()}`, {
           cache: "no-store",
         });
-        const data: unknown = await response.json();
+        const data = (await response.json()) as BookLayoutApiResult;
         const normalized = normalizeLayout(
-          data && typeof data === "object" ? (data as Record<string, unknown>).layout : null,
+          data && typeof data === "object" ? (data.layout as unknown) : null,
           pageKey
         );
 
@@ -909,6 +1221,9 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
           setLayout(normalized);
           setDraft(normalized);
           setActiveKey(normalized.books[0]?.key ?? "");
+          if (data.warning) {
+            setStatus(`Loaded ${BOOKCASE_SHELF_NAV_PROFILE_LABELS[navProfile]} with fallback values.`);
+          }
         }
       } catch {
         if (!cancelled) setStatus("Using default book layout.");
@@ -921,13 +1236,36 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [pageKey]);
+  }, [navProfile, pageKey]);
 
   useEffect(() => {
     setEditorFormPage(1);
   }, [activeKey]);
 
   useEffect(() => {
+    function applyNavDrag(clientX: number, clientY: number) {
+      const navCurrent = navDragRef.current;
+      if (!navCurrent) return false;
+
+      const deltaXPercent = ((clientX - navCurrent.startClientX) / Math.max(navCurrent.canvasWidth, 1)) * 100;
+      const deltaYPercent = ((clientY - navCurrent.startClientY) / Math.max(navCurrent.canvasHeight, 1)) * 100;
+
+      if (navCurrent.target === "back") {
+        setNavVars((prev) => ({
+          ...prev,
+          "--bookcase-nav-back-x": toPercent(clamp(navCurrent.startBackX + deltaXPercent, 0, 100)),
+          "--bookcase-nav-back-y": toPercent(clamp(navCurrent.startBackY + deltaYPercent, 0, 100)),
+        }));
+      } else {
+        setNavVars((prev) => ({
+          ...prev,
+          "--bookcase-nav-next-x": toPercent(clamp(navCurrent.startNextX + deltaXPercent, 0, 100)),
+          "--bookcase-nav-next-y": toPercent(clamp(navCurrent.startNextY + deltaYPercent, 0, 100)),
+        }));
+      }
+      return true;
+    }
+
     function onPointerMove(event: globalThis.PointerEvent) {
       if (!editMode) return;
 
@@ -949,6 +1287,10 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
           maxY
         );
         setEditorPos({ x: Math.round(nextX), y: Math.round(nextY) });
+      }
+
+      if (applyNavDrag(event.clientX, event.clientY)) {
+        return;
       }
 
       const current = interactionRef.current;
@@ -1374,6 +1716,7 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
     }
 
     function onPointerUp() {
+      navDragRef.current = null;
       interactionRef.current = null;
       panelInteractionRef.current = null;
       titleBoxInteractionRef.current = null;
@@ -1383,12 +1726,48 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       adminLogoInteractionRef.current = null;
     }
 
+    function onMouseMove(event: MouseEvent) {
+      if (!editMode) return;
+      if (applyNavDrag(event.clientX, event.clientY)) return;
+    }
+
+    function onMouseUp() {
+      if (navDragRef.current?.pointerId === -2) {
+        navDragRef.current = null;
+      }
+    }
+
+    function onTouchMove(event: TouchEvent) {
+      if (!editMode) return;
+      const touch = event.touches[0];
+      if (!touch) return;
+      if (applyNavDrag(touch.clientX, touch.clientY)) {
+        event.preventDefault();
+      }
+    }
+
+    function onTouchEnd() {
+      if (navDragRef.current?.pointerId === -1) {
+        navDragRef.current = null;
+      }
+    }
+
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", onTouchEnd);
 
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
     };
   }, [editMode]);
 
@@ -1400,6 +1779,92 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       startX: editorPos.x,
       startY: editorPos.y,
     };
+  }
+
+  function setNavVarValue(key: string, value: string) {
+    setNavVars((current) => ({ ...current, [key]: value }));
+  }
+
+  function beginNavDrag(target: "back" | "next", clientX: number, clientY: number, pointerId: number) {
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    const canvasWidth = Math.max(canvasRect?.width ?? window.innerWidth, 1);
+    const canvasHeight = Math.max(canvasRect?.height ?? window.innerHeight, 1);
+
+    navDragRef.current = {
+      target,
+      pointerId,
+      startClientX: clientX,
+      startClientY: clientY,
+      canvasWidth,
+      canvasHeight,
+      startBackX: safeNavBackX,
+      startBackY: safeNavBackY,
+      startNextX: safeNavNextX,
+      startNextY: safeNavNextY,
+    };
+  }
+
+  function startNavDrag(target: "back" | "next", event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!editMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {}
+
+    beginNavDrag(target, event.clientX, event.clientY, event.pointerId);
+  }
+
+  function startNavMouseDrag(target: "back" | "next", event: ReactMouseEvent<HTMLButtonElement>) {
+    if (!editMode) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginNavDrag(target, event.clientX, event.clientY, -2);
+  }
+
+  function startNavTouchDrag(target: "back" | "next", event: ReactTouchEvent<HTMLButtonElement>) {
+    if (!editMode) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginNavDrag(target, touch.clientX, touch.clientY, -1);
+  }
+
+  async function saveNavLayout(target: "both" | "back" | "next" = "both") {
+    setNavSaving(true);
+    setNavStatus(null);
+    try {
+      const response = await fetch("/api/bookcase-shelf-nav-layout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: navProfile, vars: navVars }),
+      });
+      const payload = (await response.json()) as ShelfNavApiResult;
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to save arrow layout.");
+      }
+      setNavVars(payload.vars || navVars);
+      if (target === "back") {
+        setNavStatus("Back arrow saved.");
+      } else if (target === "next") {
+        setNavStatus("Next arrow saved.");
+      } else {
+        setNavStatus("Arrow layout saved.");
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to save arrow layout.";
+      setNavStatus(message);
+    } finally {
+      setNavSaving(false);
+    }
+  }
+
+  function onNavProfileChange(nextProfile: BookcaseShelfNavProfileKey) {
+    setNavProfile(nextProfile);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("previewProfile", nextProfile);
+    router.replace(`${pathname}?${params.toString()}`);
   }
 
   function updateBook(key: string, updates: Partial<BookItem>) {
@@ -1932,7 +2397,7 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       const response = await fetch("/api/bookcase-book-layout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageKey, books: booksToSave, frontTemplates: frontTemplatesToSave }),
+        body: JSON.stringify({ pageKey, profile: navProfile, books: booksToSave, frontTemplates: frontTemplatesToSave }),
       });
 
       const data: unknown = await response.json();
@@ -1954,7 +2419,7 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       setLayout(normalized);
       setDraft(normalized);
       setActiveKey(normalized.books[0]?.key ?? "");
-      setStatus("Books and front templates saved.");
+      setStatus(`Saved for ${BOOKCASE_SHELF_NAV_PROFILE_LABELS[navProfile]}.`);
     } catch {
       setStatus("Unable to save books.");
     }
@@ -2101,6 +2566,12 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
 
   return (
     <>
+      {!isAdmin && searchParams.get("edit") === "1" && (
+        <div className="bookcase-edit-lock-banner">
+          <span>Admin login required on this device for drag/save editing.</span>
+          <a href="/login?mode=login">Admin Login</a>
+        </div>
+      )}
       {loading && <p className="bookcase-status">Loading book layout...</p>}
       {!loading && status && <p className="bookcase-status">{status}</p>}
 
@@ -2118,6 +2589,51 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
                 </button>
               )}
             </div>
+
+            <label className="bookcase-editor-label">
+              Arrow Profile
+              <select
+                value={navProfile}
+                onChange={(event) => onNavProfileChange(event.target.value as BookcaseShelfNavProfileKey)}
+                disabled={navLoading || navSaving}
+              >
+                {BOOKCASE_SHELF_NAV_PROFILE_KEYS.map((profileKey) => (
+                  <option key={profileKey} value={profileKey}>
+                    {BOOKCASE_SHELF_NAV_PROFILE_LABELS[profileKey]}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="bookcase-editor-label">
+              Arrow Size (% of screen width)
+              <input
+                type="range"
+                min={6}
+                max={40}
+                value={Math.round(safeNavWidth)}
+                onChange={(event) => setNavVarValue("--bookcase-nav-width", `${event.target.value}%`)}
+                disabled={navLoading || navSaving}
+              />
+            </label>
+
+            <div className="bookcase-editor-actions">
+              <button type="button" onClick={() => void saveNavLayout("back")} disabled={navLoading || navSaving}>
+                {navSaving ? "Saving..." : "Save Back Arrow"}
+              </button>
+              <button type="button" onClick={() => void saveNavLayout("next")} disabled={navLoading || navSaving}>
+                {navSaving ? "Saving..." : "Save Next Arrow"}
+              </button>
+              <button type="button" onClick={() => void saveNavLayout("both")} disabled={navLoading || navSaving}>
+                {navSaving ? "Saving..." : "Save Both"}
+              </button>
+              <button type="button" onClick={() => setNavReloadToken((current) => current + 1)} disabled={navLoading || navSaving}>
+                Reload Arrows
+              </button>
+            </div>
+            <p className="bookcase-editor-hint">Drag Back/Next signs on screen to place them for this profile.</p>
+            {navStatus && <p className="bookcase-editor-hint">{navStatus}</p>}
+            <p className="bookcase-editor-hint">Book positions/sizes also save to this same profile.</p>
 
             {!activeBook ? (
               <p className="bookcase-editor-hint">No books yet. Click Add Book to create the first slot.</p>
@@ -2555,8 +3071,44 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
       <div
         ref={canvasRef}
         className="books-layer"
+        data-books-edit={editMode ? "1" : "0"}
         data-show-back-template={showBackTemplate ? "true" : "false"}
       >
+        {editMode && (
+          <>
+            <button
+              type="button"
+              className="bookcase-nav-edit-box bookcase-nav-edit-box-back"
+              style={{
+                left: `${safeNavBackX}%`,
+                top: `${safeNavBackY}%`,
+                width: `${safeNavWidth}vw`,
+              }}
+              onPointerDown={(event) => startNavDrag("back", event)}
+              onMouseDown={(event) => startNavMouseDrag("back", event)}
+              onTouchStart={(event) => startNavTouchDrag("back", event)}
+              aria-label="Move back sign"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              className="bookcase-nav-edit-box bookcase-nav-edit-box-next"
+              style={{
+                left: `${safeNavNextX}%`,
+                top: `${safeNavNextY}%`,
+                width: `${safeNavWidth}vw`,
+              }}
+              onPointerDown={(event) => startNavDrag("next", event)}
+              onMouseDown={(event) => startNavMouseDrag("next", event)}
+              onTouchStart={(event) => startNavTouchDrag("next", event)}
+              aria-label="Move next sign"
+            >
+              Next
+            </button>
+          </>
+        )}
+
         {editMode && activeBook && showFrontTemplate && (
           <div
             className="book-front-template"
@@ -2739,6 +3291,7 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
                     cursor: "pointer",
                     font: "inherit",
                     zIndex: 1,
+                    touchAction: "pan-x",
                   }}
                 />
                 {hasDisplayTitle(book.label) &&
@@ -3117,18 +3670,10 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
             className="cover-preview-container cover-preview-container-live"
             onClick={(e) => e.stopPropagation()}
             style={{
-              left: previewAnchorRect
-                ? `${previewAnchorRect.left + (previewAnchorRect.width * previewFrontTemplate.xPercent) / 100}px`
-                : `${previewFrontTemplate.xPercent}%`,
-              top: previewAnchorRect
-                ? `${previewAnchorRect.top + (previewAnchorRect.height * previewFrontTemplate.yPercent) / 100}px`
-                : `${previewFrontTemplate.yPercent}%`,
-              width: previewAnchorRect
-                ? `${(previewAnchorRect.width * previewFrontTemplate.widthPercent) / 100}px`
-                : `${previewFrontTemplate.widthPercent}%`,
-              height: previewAnchorRect
-                ? `${(previewAnchorRect.height * previewFrontTemplate.heightPercent) / 100}px`
-                : `${previewFrontTemplate.heightPercent}%`,
+              left: "50vw",
+              top: "50dvh",
+              width: `${coverPreviewRect.width}px`,
+              height: `${coverPreviewRect.height}px`,
             }}
           >
             <div
@@ -3210,6 +3755,7 @@ export default function EditableBooksLayer({ pageKey, isAdmin }: Props) {
           </div>
         </div>
       )}
+
     </>
   );
 }

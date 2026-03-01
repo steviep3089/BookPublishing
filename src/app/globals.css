@@ -2280,6 +2280,33 @@ body {
   transform: translateY(-1px) scale(1.015);
 }
 
+.bookcase-nav-edit-box {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 1257 / 335;
+  min-width: 84px;
+  max-width: 360px;
+  z-index: 46;
+  border: 1px dashed rgba(250, 236, 212, 0.92);
+  border-radius: 8px;
+  background: rgba(20, 13, 8, 0.38);
+  color: rgba(249, 238, 220, 0.98);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.bookcase-nav-edit-box:active {
+  cursor: grabbing;
+}
+
 .bookcase-hotspot {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -2503,6 +2530,34 @@ body {
   z-index: 15;
 }
 
+.bookcase-edit-lock-banner {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(92vw, 680px);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(246, 220, 186, 0.8);
+  background: rgba(20, 13, 9, 0.94);
+  color: #f6eee2;
+  font-size: 0.86rem;
+}
+
+.bookcase-edit-lock-banner a {
+  color: #1c130b;
+  background: #f0e7d8;
+  border-radius: 999px;
+  padding: 4px 10px;
+  text-decoration: none;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .bookcase-scene-inner {
   display: grid;
   place-items: center;
@@ -2512,6 +2567,16 @@ body {
   position: absolute;
   inset: 0;
   z-index: 12;
+}
+
+.books-layer[data-books-edit="1"] {
+  touch-action: none;
+}
+
+.books-layer[data-books-edit="0"] .shelf-book,
+.books-layer[data-books-edit="0"] .shelf-book-drag,
+.books-layer[data-books-edit="0"] .shelf-book-label-link {
+  touch-action: pan-x;
 }
 
 .bookcase-admin-logo {
@@ -2575,6 +2640,7 @@ body {
   cursor: move;
   z-index: 22;
   overflow: hidden;
+  touch-action: none;
 }
 
 .book-front-stage {
@@ -2620,6 +2686,7 @@ body {
   background: transparent;
   cursor: move;
   z-index: 4;
+  touch-action: none;
 }
 
 .book-front-window .shelf-book-handle.handle-nw {
@@ -2810,11 +2877,13 @@ body {
   background: rgba(255, 248, 236, 0.08);
   cursor: move;
   z-index: 5;
+  touch-action: none;
 }
 
 .shelf-book.editable {
   outline: 1px dashed rgba(255, 236, 207, 0.6);
   outline-offset: 4px;
+  touch-action: none;
 }
 
 .shelf-book.editable.active {
@@ -2831,6 +2900,7 @@ body {
   padding: 0;
   display: grid;
   place-items: center;
+  touch-action: none;
 }
 
 .shelf-book-drag:active {
@@ -3305,6 +3375,50 @@ body {
   }
 }
 
+@media (max-width: 680px) and (orientation: portrait) {
+  .bookcase-scene.bookcase-scene-empty {
+    min-height: 100svh;
+    height: 100dvh;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    background-image: none !important;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-canvas {
+    min-height: 100svh;
+    height: 100dvh;
+    width: 300vw;
+    min-width: 300vw;
+    overflow: visible;
+    background-image:
+      linear-gradient(135deg, rgba(8, 10, 16, 0.56), rgba(10, 10, 10, 0.22)),
+      url("/emptybookcase.png");
+    background-size: 100% 100%;
+    background-position: center 6%;
+    background-repeat: no-repeat;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 10px);
+    width: clamp(92px, 24vw, 132px);
+    z-index: 42;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign-back {
+    left: max(8px, env(safe-area-inset-left));
+    right: auto;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign-next {
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+  }
+}
+
 @media (hover: none), (pointer: coarse) {
   .login-hero,
   .bookcase-scene {
@@ -3313,6 +3427,48 @@ body {
 }
 
 @media (max-height: 500px) {
+  .bookcase-scene.bookcase-scene-empty {
+    min-height: 100svh;
+    height: 100dvh;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    background-image: none !important;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-canvas {
+    min-height: 100svh;
+    height: 100dvh;
+    width: 130vw;
+    min-width: 130vw;
+    overflow: visible;
+    background-image:
+      linear-gradient(135deg, rgba(8, 10, 16, 0.56), rgba(10, 10, 10, 0.22)),
+      url("/emptybookcase.png");
+    background-size: 100% 100%;
+    background-position: center 6%;
+    background-repeat: no-repeat;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 8px);
+    width: clamp(84px, 18vw, 118px);
+    z-index: 42;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign-back {
+    left: max(8px, env(safe-area-inset-left));
+    right: auto;
+  }
+
+  .bookcase-scene.bookcase-scene-empty .bookcase-nav-sign-next {
+    right: max(8px, env(safe-area-inset-right));
+    left: auto;
+  }
+
   .bookcase-scene.bookcase-scene-home[data-layout-edit="1"][data-bookcase-profile^="iphone-landscape"] {
     min-height: 100svh;
     height: 100dvh;
